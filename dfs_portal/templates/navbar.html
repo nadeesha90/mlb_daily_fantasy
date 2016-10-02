@@ -1,0 +1,8 @@
+{% from 'flash.html' import modal_alert, well_alert_navbar, well_alert %}
+
+
+
+
+{{ well_alert(flash_messages_well) }}
+{{ modal_alert(flash_messages_modal) }}
+<li><a href="{{ url_for('mlb.dashboard.index') }}">MLB</a></li>

@@ -1,0 +1,219 @@
+team_map:
+    'al all-stars': 'aas'
+    'american': 'aaa'
+    'angels': 'laa'
+    'astros': 'hou'
+    'athletics': 'oak'
+    'blue jays': 'tor'
+    'braves': 'atl'
+    'braves futures': 'atl'
+    'brewers': 'mil'
+    'bulls': 'dur'
+    'canada jr. team': 'can'
+    'cardinals': 'stl'
+    'cubs': 'chc'
+    'cuba': 'cub'
+    'd-backs': 'ari'
+    'diablos rojos': 'drm'
+    'dodgers': 'lad'
+    'eagles': 'hhm'
+    'giants': 'sfo'
+    'hoyas': 'guh'
+    'hurricanes': 'mia' # miami hurricanes?
+    'huskies': 'wsh'
+    'hurricanes': 'hur'
+    'indians': 'cle'
+    'mariners': 'sea'
+    'marlins': 'mia'
+    'mets': 'nym'
+    'miracle': 'fmm'
+    'mocs': 'fsa'
+    'national': 'waz'
+    'nationals': 'was'
+    'nl all-stars': 'nas'
+    'orioles': 'bal'
+    'owls': 'owl'
+    'padres': 'sdg'
+    'panthers': 'pan'
+    'phillies': 'phi'
+    'phillies futures': 'phf'
+    'pirates': 'pit'
+    'rangers': 'tex'
+    'rays': 'tam'
+    'rays futures': 'tam'
+    'red sox': 'bos'
+    'reds': 'cin'
+    'river cats': 'riv'
+    'rockies': 'col'
+    'royals': 'kan'
+    'seminoles': 'fsu'
+    'spartans': 'spa'
+    'tigers': 'det'
+    'twins': 'min'
+    'white sox': 'chw'
+    'wildcats': 'wca'
+    'yankees': 'nyy'
+team_map_reverse: 
+    'aas': 'al all-stars'
+    'aaa': 'american'
+    'laa': 'angels'
+    'hou': 'astros'
+    'oak': 'athletics'
+    'tor': 'blue jays'
+    'atl': 'braves'
+    'mil': 'brewers'
+    'dur': 'bulls'
+    'can': 'canada jr. team'
+    'stl': 'cardinals'
+    'chc': 'cubs'
+    'cub': 'cuba'
+    'ari': 'd-backs'
+    'drm': 'diablos rojos'
+    'lad': 'dodgers'
+    'hhm': 'eagles'
+    'sfo': 'giants'
+    'guh': 'hoyas'
+    'wsh': 'huskies'
+    'hur': 'hurricanes'
+    'cle': 'indians'
+    'sea': 'mariners'
+    'mia': 'marlins'
+    'nym': 'mets'
+    'fmm': 'miracle'
+    'fsa': 'mocs'
+    'was': 'nationals'
+    'waz': 'national'
+    'nas': 'nl all-stars'
+    'bal': 'orioles'
+    'owl': 'owls'
+    'sdg': 'padres'
+    'pan': 'panthers'
+    'phi': 'phillies'
+    'phf': 'phillies futures'
+    'pit': 'pirates'
+    'tex': 'rangers'
+    'tam': 'rays'
+    'bos': 'red sox'
+    'cin': 'reds'
+    'riv': 'river cats'
+    'col': 'rockies'
+    'kan': 'royals'
+    'fsu': 'seminoles'
+    'spa': 'spartans'
+    'det': 'tigers'
+    'min': 'twins'
+    'chw': 'white sox'
+    'wca': 'wildcats'
+    'nyy': 'yankees'
+
+team_map_retro:  
+    'al all-stars': 'aas' #maybe
+    'american': 'aaa' # Maybe
+    'angels': 'ana'# Confirmed
+    'astros': 'hou'# Confirmed
+    'athletics': 'oak'# Confirmed
+    'blue jays': 'tor'# Confirmed
+    'braves': 'atl'# Confirmed
+    'braves futures': 'atl'# Maybe
+    'brewers': 'mil'# Confirmed
+    'bulls': 'dur'#Maybe
+    'canada jr. team': 'can' #maybe
+    'cardinals': 'sln'# Confirmed
+    'cubs': 'chn'# Confirmed
+    'cuba': 'cub' #maybe
+    'd-backs': 'ari'# Confirmed
+    'diablos rojos': 'drm'# Maybe
+    'dodgers': 'lan'# Confirmed
+    'eagles': 'hhm' #maybe
+    'giants': 'sfn'# Confirmed
+    'hoyas': 'guh'#Maybe
+    'hurricanes': 'mia'#Maybe
+    'huskies': 'wsh'# Maybe
+    'hurricanes': 'hur' #Maybe
+    'indians': 'cle'# Confirmed
+    'mariners': 'sea' # Confirmed
+    'marlins': 'flo'# Confirmed
+    'mets': 'nyn'# Confirmed
+    'miracle': 'fmm'# Maybe
+    'mocs': 'fsa'# Maybe
+    'national': 'waz' # Maybe
+    'nationals': 'was'# Confirmed
+    'nl all-stars': 'nas'#Maybe
+    'orioles': 'bal'# Confirmed
+    'owls': 'owl'# Maybe
+    'padres': 'sdn'# Confirmed
+    'panthers': 'pan' #maybe
+    'phillies': 'phi'# Confirmed
+    'phillies futures': 'phf' # Maybe
+    'pirates': 'pit'# Confirmed
+    'rangers': 'tex'# Confirmed
+    'rays': 'tba' # Confirmed
+    'rays futures': 'tba' # Confirmed
+    'red sox': 'bos'# Confirmed
+    'reds': 'cin'# Confirmed
+    'river cats': 'riv'# maybe
+    'rockies': 'col'# Confirmed
+    'royals': 'kca'# Confirmed
+    'seminoles': 'fsu'#Maybe
+    'spartans': 'spa' #maybe
+    'tigers': 'det'# Confirmed
+    'twins': 'min'# Confirmed
+    'white sox': 'cha'# Confirmed
+    'wildcats': 'wca' #Mayb
+    'yankees': 'nya'# Confirmed
+team_to_city:
+    'al all-stars': 'American League All-Stars'
+    'american': 'American Random'
+    'angels': 'Los Angeles'
+    'astros': 'Houston'
+    'athletics': 'Oakland'
+    'blue jays': 'Toronto'
+    'braves': 'Atlanta'
+    'braves futures': 'Atlanta'
+    'brewers': 'Milwaukee'
+    'bulls': 'Durham'#Maybe
+    'canada jr. team': 'Canadian Junior Team'
+    'cardinals': 'St. Louis'
+    'cubs': 'Chicago'
+    'cuba': 'Random Cuba'
+    'd-backs': 'Arizona'
+    'diablos rojos': 'Mexico City'
+    'dodgers': 'Los Angeles'
+    'eagles': 'Halton Hills'
+    'giants': 'San Fransisco'
+    'hoyas': 'Georgetown University'
+    'hurricanes': 'Miami'
+    'huskies': 'University of Washington'
+    'hurricanes': 'Random Hurricans'
+    'indians': 'Cleveland'
+    'mariners': 'Seattle' 
+    'marlins': 'Florida'
+    'mets': 'New York'
+    'miracle': 'Fort Myers'
+    'mocs': 'Florida Southern Univeristy'
+    'national': 'Random Washington'
+    'nationals': 'Washington'
+    'nl all-stars': 'National League All-Stars'
+    'orioles': 'Baltimore'
+    'owls': 'Random Owls'
+    'padres': 'San Diego'
+    'panthers': 'Random Panthers'
+    'phillies': 'Philadelphia'
+    'phillies futures': 'Philadelphia Futures'
+    'pirates': 'Pittsburg'
+    'rangers': 'Texas'
+    'rays': 'Tampa Bay' 
+    'rays futures': 'Tampa Bay'
+    'red sox': 'Boston'
+    'reds': 'Cincinatti'
+    'river cats': 'Random river cats'
+    'rockies': 'Colorado'
+    'royals': 'Kansas City'
+    'seminoles': 'Florida State University'
+    'spartans': 'Spartaaa!'
+    'tigers': 'Detroit'
+    'twins': 'Minnesota'
+    'white sox': 'Chicago'
+    'wildcats': 'Random Wildcats'
+    'yankees': 'New York'
+ 

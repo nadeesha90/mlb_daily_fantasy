@@ -1,0 +1,71 @@
+{% from 'flash.html' import normal_alert %}
+
+{% set flash_messages_normal = get_flashed_messages(with_categories=True,
+    category_filter=['default', 'success', 'info', 'warning', 'danger']) %}
+{% set flash_messages_modal = get_flashed_messages(category_filter=['modal']) %}
+{% set flash_messages_well = get_flashed_messages(category_filter=['well']) %}
+
+{% if flash_messages_normal %}{% set STATICS_ENABLE_RESOURCE_BOOTSTRAP_GROWL = True %}{% endif %}
+{% if flash_messages_well %}{% set STATICS_ENABLE_RESOURCE_CSSHAKE = True %}{% endif %}
+
+{% block title %}DFS Portal{%- block append_title %}{% endblock %}{% endblock %}
+{% block head %}
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <!-- Meta, title, CSS, favicons, etc. -->
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+    </head>
+{% endblock %}
+
+{% block styles %}
+    <link rel="shortcut icon" href="/static/favicon.ico?" />
+
+    {% if flash_messages_normal or flash_messages_modal or flash_messages_well %}
+        <style type="text/css">
+            .customAlert { word-break: break-all; }
+        </style>
+    {% endif %}
+
+     <!-- Bootstrap -->
+    <link href="/static/vendors/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="/static/vendors/font-awesome/css/font-awesome.min.css" rel="stylesheet">
+    <!-- iCheck -->
+    <link href="/static/vendors/iCheck/skins/flat/green.css" rel="stylesheet">
+    <!-- Datatables -->
+    <link href="/static/vendors/datatables.net-bs/css/dataTables.bootstrap.min.css" rel="stylesheet">
+    <link href="/static/vendors/datatables.net-buttons-bs/css/buttons.bootstrap.min.css" rel="stylesheet">
+    <link href="/static/vendors/datatables.net-fixedheader-bs/css/fixedHeader.bootstrap.min.css" rel="stylesheet">
+    <link href="/static/vendors/datatables.net-responsive-bs/css/responsive.bootstrap.min.css" rel="stylesheet">
+    <link href="/static/vendors/datatables.net-scroller-bs/css/scroller.bootstrap.min.css" rel="stylesheet">
+
+    <!-- Custom Theme Style -->
+    <link href="/static/build/css/custom.min.css" rel="stylesheet">
+
+
+{% endblock %}
+
+{% block navbar %}
+    {# Need to set these variables to fix a "context depth limit" with Jinja2 blocks and includes. #}
+    {% set flash_messages_modal = flash_messages_modal %}
+    {% set flash_messages_well = flash_messages_well %}
+    {# % include 'navbar.html' with context % #}
+{% endblock %}
+
+{% block scripts %}
+
+    {% if flash_messages_normal %}
+        <script type='text/javascript'>
+            $.growl.default_options.delay = 0;
+            $.growl.default_options.position = { from: 'top', align: 'center'};
+            $.growl.default_options.template.container =
+                    '<div class="col-xs-10 col-sm-10 col-md-6 col-lg-6 growl-animated alert abAlert">';
+        </script>
+    {% endif %}
+
+    {{ normal_alert(flash_messages_normal) }}
+{% endblock %}
+
+{# Includes jQuery already. Specify additional JS libraries like d3/FontAwesome in your template. #}
