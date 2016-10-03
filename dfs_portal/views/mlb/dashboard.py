@@ -16,21 +16,69 @@ WAIT_UP_TO = 5  # Wait up to these many seconds for task to finish. Won't block 
 
 
 @mlb_dashboard.route('/players')
-#@mlb_dashboard.route('/page/<int:page>')
 def index():
-    #pagination = Package.query.order_by('name').paginate(page, per_page=25, error_out=False)
     msg = session.get('messages')
     session.clear()
+
+    #pitchers = Player.query\
+                #.order_by('full_name')\
+                #.filter(Player.player_type == 'pitcher')\
+                #.all()
+    #for pitcher in pitchers:
+        #statlines = PitcherStatLine.query\
+                        #.join(Game)\
+                        #.add_column(Game.date)\
+                        #.filter(PitcherStatLine.player_id == pitcher.id)\
+                        #.order_by('date')\
+                        #.with_entities(PitcherStatLine.fd_fpts)\
+                        #.all()
+        #fpts = [t[0] for t in statlines]
+        #fpts_str = str(fpts)[1:-1]
+        #pitcher.fpts = fpts_str
+#
+    #statlines = map(lambda x: list(
+    #players = Player.query.order_by('full_name').paginate(1, per_page=25, error_out=False)
+    #pitchers = pitchers[:20]
+    columns = Player.__table__.columns.keys()
+    special_columns = ['fpts']
+    return render_template('dashboard.html',
+            columns=columns,
+            special_columns=special_columns)
+            #batters=batters,
+            #pitchers=pitchers,
+    #return render_template('dashboard.html')
+
+@mlb_dashboard.route('/pitchers_ajax')
+def pitchers_table(request):
+    # defining columns
+    columns = []
+    columns.append(ColumnDT('id'))
+    columns.append(ColumnDT('name', filter=_upper))
+    columns.append(ColumnDT('address.description')) # where address is an SQLAlchemy Relation
+    columns.append(ColumnDT('created_at', filter=str))
+
+
+    # instantiating a DataTable for the query and table needed
+    rowTable = DataTables(request.GET, User, query, columns)
+
+    # returns what is needed by DataTable
+    return rowTable.output_result()
+
+@mlb_dashboard.route('/batters_ajax')
+def batters_table(request):
+    # defining columns
+    columns = Player.__table__.columns.keys()
+    special_columns = ['fpts']
+    columns = []
+    columns.append(ColumnDT('id'))
+    columns.append(ColumnDT('name', filter=_upper))
+    columns.append(ColumnDT('address.description')) # where address is an SQLAlchemy Relation
+    columns.append(ColumnDT('created_at', filter=str))
 
     batters = Player.query\
                 .order_by('full_name')\
                 .filter(Player.player_type == 'batter')\
                 .all()
-    pitchers = Player.query\
-                .order_by('full_name')\
-                .filter(Player.player_type == 'pitcher')\
-                .all()
-    pitchers = pitchers[:2]
     for batter in batters:
         statlines = BatterStatLine.query\
                         .join(Game)\
@@ -40,25 +88,16 @@ def index():
                         .with_entities(BatterStatLine.fd_fpts)\
                         .all()
         fpts = [t[0] for t in statlines]
-        batter.fpts = fpts
-    for pitcher in pitchers:
-        statlines = PitcherStatLine.query\
-                        .join(Game)\
-                        .add_column(Game.date)\
-                        .filter(PitcherStatLine.player_id == pitcher.id)\
-                        .order_by('date')\
-                        .with_entities(PitcherStatLine.fd_fpts)\
-                        .all()
-        fpts = [t[0] for t in statlines]
-        pitcher.fpts = fpts
+        fpts_str = str(fpts)[1:-1]
+        batter.fpts = fpts_str
 
-    #statlines = map(lambda x: list(
-    #players = Player.query.order_by('full_name').paginate(1, per_page=25, error_out=False)
-    columns = Player.__table__.columns.keys()
-    columns.append('fpts_graph')
-    #return render_template('dashboard.html', batters=batters, pitchers=pitchers, columns=columns)
-    return render_template('dashboard.html', batters=[], pitchers=pitchers, columns=columns)
-    #return render_template('dashboard.html')
+    batters = batters[:20]
+
+    # instantiating a DataTable for the query and table needed
+    rowTable = DataTables(request.GET, User, query, columns)
+
+    # returns what is needed by DataTable
+    return rowTable.output_result()
 
 
 @mlb_dashboard.route('/sync', methods=['POST'])
