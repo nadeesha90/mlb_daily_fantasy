@@ -1,15 +1,20 @@
 import pudb
 import time
+import numpy as np
 from dateutil.parser import parse as parse_date
 
 from flask import redirect, render_template, url_for, request, jsonify, session
+from datatables import ColumnDT, DataTables
+from sqlalchemy.orm import subqueryload, joinedload, contains_eager, immediateload
+from sqlalchemy.sql import func
 
 from dfs_portal.blueprints import mlb_dashboard
 from dfs_portal.core import flash
-from dfs_portal.extensions import redis
+from dfs_portal.extensions import redis, db
 from dfs_portal.models.mlb import *
 from dfs_portal.models.redis import POLL_SIMPLE_THROTTLE
 from dfs_portal.tasks.mlbgame import fetch_and_add_stat_lines_to_db
+from dfs_portal.utils.htools import lmap
 
 SLEEP_FOR = 0.1  # Seconds to wait in between checks.
 WAIT_UP_TO = 5  # Wait up to these many seconds for task to finish. Won't block view for more than this.
@@ -40,7 +45,9 @@ def index():
     #players = Player.query.order_by('full_name').paginate(1, per_page=25, error_out=False)
     #pitchers = pitchers[:20]
     columns = Player.__table__.columns.keys()
-    special_columns = ['fpts']
+    columns = ['id', 'mlbgame_id', 'full_name', 'last_name', 'fd_fpts_avg', 'fpts']
+    #special_columns = ['fpts']
+    special_columns = []
     return render_template('dashboard.html',
             columns=columns,
             special_columns=special_columns)
@@ -48,57 +55,93 @@ def index():
             #pitchers=pitchers,
     #return render_template('dashboard.html')
 
-@mlb_dashboard.route('/pitchers_ajax')
-def pitchers_table(request):
-    # defining columns
-    columns = []
-    columns.append(ColumnDT('id'))
-    columns.append(ColumnDT('name', filter=_upper))
-    columns.append(ColumnDT('address.description')) # where address is an SQLAlchemy Relation
-    columns.append(ColumnDT('created_at', filter=str))
+def parse_datatable(playerType):
 
+    if playerType == 'pitcher':
+        sparklineClassName = 'inlinespark-pitchers'
+        statlineColumn = 'pitcherstatlines'
+    elif playerType == 'batter':
+        sparklineClassName = 'inlinespark-batters'
+        statlineColumnName = 'batterstatlines.fd_fpts'
+        statlineColumn = 'batterstatlines'
 
-    # instantiating a DataTable for the query and table needed
-    rowTable = DataTables(request.GET, User, query, columns)
+    def spanned(l):
+        result = ''.join(['<span class="{}">'.format(sparklineClassName),
+                         l,
+                         '</span>'
+                         ])
+        return result
+    def rnd(num):
+        pu.db
 
-    # returns what is needed by DataTable
-    return rowTable.output_result()
-
-@mlb_dashboard.route('/batters_ajax')
-def batters_table(request):
     # defining columns
     columns = Player.__table__.columns.keys()
+    #columns = lmap(lambda x: ColumnDT(x), columns)
     special_columns = ['fpts']
     columns = []
     columns.append(ColumnDT('id'))
-    columns.append(ColumnDT('name', filter=_upper))
-    columns.append(ColumnDT('address.description')) # where address is an SQLAlchemy Relation
-    columns.append(ColumnDT('created_at', filter=str))
+    columns.append(ColumnDT('mlbgame_id'))
+    columns.append(ColumnDT('full_name'))
+    columns.append(ColumnDT('last_name'))
+    columns.append(ColumnDT(playerType+'_fd_fpts_avg', filter=lambda x: round(x, 1)))
+    #columns.append(ColumnDT(statlineColumn+'.fd_fpts', filter=spanned))
+    columns.append(ColumnDT(statlineColumn+'.fd_fpts'))
+    #columns.append(ColumnDT(statlineColumnName, filter=avg))
 
-    batters = Player.query\
-                .order_by('full_name')\
-                .filter(Player.player_type == 'batter')\
-                .all()
-    for batter in batters:
-        statlines = BatterStatLine.query\
-                        .join(Game)\
-                        .add_column(Game.date)\
-                        .filter(BatterStatLine.player_id == batter.id)\
-                        .order_by('date')\
-                        .with_entities(BatterStatLine.fd_fpts)\
-                        .all()
-        fpts = [t[0] for t in statlines]
-        fpts_str = str(fpts)[1:-1]
-        batter.fpts = fpts_str
+    #subq = Player.query.with_entities(func.avg(BatterStatLine.fd_fpts).label('fptsavg'))\
+               #.subquery()
+    #players = Player.query\
+                #.select_entity_from(subq)\
+                #.options(subqueryload(statlineColumn))\
+                #.add_column('fptsavg')\
+                #.filter(Player.player_type == playerType)
 
-    batters = batters[:20]
+    if playerType == 'batter':
+        players = Player.query\
+                    .join(BatterStatLine)\
+                    .filter(Player.player_type == playerType)\
+                    .group_by(Player.id)\
+                    .having(func.count(Player.batterstatlines) > 0)
+                    #having(func.length(users.c.name) > 4)
+    else:
+        players = Player.query\
+                    .join(PitcherStatLine)\
+                    .filter(Player.player_type == playerType)\
+                    .group_by(Player.id)\
+                    .having(func.count(Player.pitcherstatlines) > 0)
+                    #having(func.length(users.c.name) > 4)
+                    #.filter(Player.player_type == playerType)
+                    #.filter(Player.id == PitcherStatLine.player_id)
+                    #.outerjoin(Player.pitcherstatlines)\
+                    #.options(joinedload(Player.pitcherstatlines))\
+                    #.options(joinedload(statlineColumn))\
+                    #.options(contains_eager(Player.pitcherstatlines))
+                    #.options(joinedload(statlineColumn))\
+                    #.options(subqueryload(statlineColumn))\
+                    #.join(PitcherStatLine, Player.id == PitcherStatLine.player_id)\
+                    #.options(subqueryload(statlineColumn))\
+    #players = Player.query\
+                #.options(subqueryload(statlineColumn))\
+                    #.subqueryload(statlineColumnName))\
+                #.filter(Player.player_type == playerType)
 
+                #.order_by('full_name')
+                #.outerjoin(PitcherStatLine)
+                #.filter(Player.player_type == 'pitcher')
     # instantiating a DataTable for the query and table needed
-    rowTable = DataTables(request.GET, User, query, columns)
+    #Rating.query.with_entities(func.avg(Rating.field2).label('average')).filter(Rating.url == url_string.netloc)
+    rowTable = DataTables(request.args, Player, players, columns)
 
     # returns what is needed by DataTable
-    return rowTable.output_result()
+    return jsonify(rowTable.output_result())
 
+
+@mlb_dashboard.route('/pitchers_table')
+def pitchers_table():
+    return parse_datatable('pitcher')
+@mlb_dashboard.route('/batters_table')
+def batters_table():
+    return parse_datatable('batter')
 
 @mlb_dashboard.route('/sync', methods=['POST'])
 def sync():

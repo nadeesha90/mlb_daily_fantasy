@@ -531,7 +531,7 @@ def fetch_and_add_stat_lines_to_db(startDate, endDate):
             statuses = fetch_all_game_data(date) >> add_data_to_db
             errorFound = False
             if statuses:
-                for status, message, data in statuses:
+                for message, data, status in statuses:
                     if status != 200:
                         if status != 423:
                             errorFound = True

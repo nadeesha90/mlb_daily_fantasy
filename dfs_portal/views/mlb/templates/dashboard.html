@@ -8,12 +8,13 @@
         </div>
 
         <div class="clearfix"></div>
+        <span id="ree"> </span>
 
         <div class="row">
             <div class="col-md-12 col-sm-12 col-xs-12">
                 <div class="x_panel">
                     <div class="x_title">
-                        <h2>Ree Pitchers</h2>
+                        <h2>Pitchers</h2>
                         <ul class="nav navbar-right panel_toolbox">
                             <li>
                                 <div id="reportrange" style="background: #fff; cursor: pointer; padding: 5px 10px; border: 1px solid #ccc">
@@ -39,28 +40,6 @@
                             </thead>
 
                             <tbody>
-                                {% for item in pitchers %}
-                                <tr>
-                                    {% for col in columns %}
-                                        <td>{{ item[col] }}</td>
-                                    {% endfor %}
-                                    {% for col in special_columns %}
-                                    <td>
-                                        <span class="inlinespark">
-                                            {{ item[col] }}
-                                        </span>
-                                    </td>
-                                    {% endfor %}
-
-                                </tr>
-                                {% else %}
-                                <tr>
-                                    {% for col in columns %}
-                                        <td colspan="1" style="text-align: center">Local database is empty.</td>
-                                    {% endfor %}
-                                </tr>
-                                {% endfor %}
-
                             </tbody>
                         </table>
                         
@@ -68,7 +47,7 @@
                 </div>
                 <div class="x_panel">
                     <div class="x_title">
-                        <h2>Ree Batters</h2>
+                        <h2>Batters</h2>
                         <ul class="nav navbar-right panel_toolbox">
                             <li>
                                 <div id="reportrange" style="background: #fff; cursor: pointer; padding: 5px 10px; border: 1px solid #ccc">
@@ -94,28 +73,6 @@
                             </thead>
 
                             <tbody>
-                                {% for item in batters %}
-                                <tr>
-                                    {% for col in columns %}
-                                        <td>{{ item[col] }}</td>
-                                    {% endfor %}
-                                    {% for col in special_columns %}
-                                    <td>
-                                        <span class="inlinespark">
-                                            {{ item[col] }}
-                                        </span>
-                                    </td>
-                                    {% endfor %}
-
-                                </tr>
-                                {% else %}
-                                <tr>
-                                    {% for col in columns %}
-                                        <td colspan="1" style="text-align: center">Local database is empty.</td>
-                                    {% endfor %}
-                                </tr>
-                                {% endfor %}
-
                             </tbody>
                         </table>
 
@@ -160,9 +117,26 @@ $(document).ready(function() {
                     className: "btn-sm"
                 },
                 ],
+                "lengthMenu": [[5,10,25, -1], [5, 10, 25, "All"]],
+                "columns": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    {"searchable": false},
+                    {"searchable": false},
+                 ],
+
+
                 responsive: true,
-                "drawCallback": tableDrawCallBack2(),
+                "processing": true,
+                "serverSide": true,
+                "deferRender": true,
+                "ajax": "{{ url_for('.batters_table') }}",
+                "drawCallback": tableDrawCallBack,
+                "createdRow": rowDrawCallBack,
             });
+
         }
         if ($("#pitchers-table").length) {
             $("#pitchers-table").DataTable({
@@ -189,18 +163,37 @@ $(document).ready(function() {
                     className: "btn-sm"
                 },
                 ],
+                "lengthMenu": [[5,10,25, -1], [5, 10, 25, "All"]],
+                /*"columns": [
+                    { "width": "5%" },
+                    { "width": "5%" },
+                    { "width": "10%" },
+                    { "width": "10%" },
+                    { "width": "5%", "searchable": false},
+                    { "width": "25%","searchable": false},
+                 ],*/
+                "columns": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    {"searchable": false},
+                    {"searchable": false},
+                 ],
+
                 responsive: true,
-                "drawCallback": tableDrawCallBack(),
+                "processing": true,
+                "serverSide": true,
+                "deferRender": true,
+                "ajax": "{{ url_for('.pitchers_table') }}",
+                //"initComplete": tableInitCallBack,
+                "drawCallback": tableDrawCallBack,
+                "createdRow": rowDrawCallBack,
+                //"initComplete": tableDrawCallBackPitchers2
+        
             });
         }
     };
-    // Gets called if datatable is redrawn
-    //$('#pitchers-table,#batters-table').on('draw.dt', function() {
-        //// Refresh the sparkline
-        //console.log("Dindu");
-        //$.sparkline_display_visible();
-    //});
-
     TableManageButtons = function() {
         "use strict";
         return {
@@ -211,6 +204,7 @@ $(document).ready(function() {
     }();
 
     TableManageButtons.init();
+    //tableDrawCallBack2();
 });
 
 
@@ -287,7 +281,7 @@ $(document).ready(function() {
         console.log("cancel event fired");
     });
     $('#options1').click(function() {
-        $('#reportrange').data('daterangepicker').setOptions(optionSet1, cb);
+    $('#reportrange').data('daterangepicker').setOptions(optionSet1, cb);
     });
     $('#options2').click(function() {
         $('#reportrange').data('daterangepicker').setOptions(optionSet2, cb);
@@ -299,22 +293,40 @@ $(document).ready(function() {
 </script>
 <!-- jQuery Sparklines -->
 <script>
-    //$(".sparkline_two").sparkline([2, 4, 3, 4, 5, 4, 5, 4, 3, 4, 5, 6, 7, 5, 4, 3, 5, 6], {
-    function tableDrawCallBack (settings)  {
-    $(".inlinespark").sparkline('html', {
-          type: 'line',
-          width: '200',
-          height: '40',
-          lineColor: '#26B99A',
-          fillColor: 'rgba(223, 223, 223, 0.57)',
-          lineWidth: 2,
-          spotColor: '#26B99A',
-          minSpotColor: '#26B99A'
-        });
+    function tableDrawCallBack ()  {
+        console.log("REE")
+        $(".inlinespark").sparkline('html', {
+              type: 'line',
+              width: '200',
+              height: '40',
+              lineColor: '#26B99A',
+              fillColor: 'rgba(223, 223, 223, 0.57)',
+              lineWidth: 2,
+              spotColor: '#26B99A',
+              minSpotColor: '#26B99A'
+            });
+
+        console.log($(".inlinespark").length)
+        $.sparkline_display_visible() 
     }
-    function tableDrawCallBack2 (settings)  {
-        $.sparkline_display_visible();
+    function tableInitCallBack (settings)  {
+        console.log("REE2")
+        $(".inlinespark").sparkline('html', {
+              type: 'line',
+              width: '200',
+              height: '40',
+              lineColor: '#26B99A',
+              fillColor: 'rgba(223, 223, 223, 0.57)',
+              lineWidth: 2,
+              spotColor: '#26B99A',
+              minSpotColor: '#26B99A'
+            });
+        $.sparkline_display_visible() 
     }
+    function rowDrawCallBack (row, data, dataIndex) {
+        $(row.cells[5]).addClass('inlinespark');
+    }
+
 </script>
 <!-- /jQuery Sparklines -->
 

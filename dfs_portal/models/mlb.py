@@ -1,4 +1,6 @@
-from sqlalchemy import Column, String, Text, Integer, ForeignKey, Enum, DateTime, Float, PickleType, Boolean
+import numpy as np
+
+from sqlalchemy import Column, String, Text, Integer, ForeignKey, Enum, DateTime, Float, PickleType, Boolean, func, select, join
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 from sqlalchemy.exc import IntegrityError
@@ -26,6 +28,19 @@ class Player(Base):
     full_name = Column(String(80))
     player_type = Column(Enum(*HardCoded.MLB_PlayerType))
     teams = association_proxy('team_players', 'team')
+
+    @hybrid_property
+    def pitcher_fd_fpts_avg(self):
+        return np.mean([stat.fd_fpts for stat in self.pitcherstatlines])
+    @pitcher_fd_fpts_avg.expression
+    def pitcher_fd_fpts_avg(cls):
+        return func.avg(PitcherStatLine.fd_fpts)
+    @hybrid_property
+    def batter_fd_fpts_avg(self):
+        return np.mean([stat.fd_fpts for stat in self.batterstatlines])
+    @batter_fd_fpts_avg.expression
+    def batter_fd_fpts_avg(cls):
+        return func.avg(BatterStatLine.fd_fpts)
 
 
 class TeamPlayer(Base):
@@ -93,7 +108,6 @@ class BatterStatLine(Base):
 
     salary = Column(Integer)
 
-
 class PitcherStatLine(Base):
     __tablename__ = 'pitcherstatline'
     id = Column(Integer, primary_key=True)
@@ -110,7 +124,6 @@ class PitcherStatLine(Base):
     fd_fpts = Column(Float)
 
     salary = Column(Integer)
-
 
 class Model(Base):
     __tablename__ = 'model'

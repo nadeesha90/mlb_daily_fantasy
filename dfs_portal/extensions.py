@@ -32,6 +32,7 @@ def _on_connect(dbapi_connection, **_):
 
 
 celery = Celery()
-db = SQLAlchemy(session_options=dict(autocommit=False, autoflush=False))
+#db = SQLAlchemy(session_options=dict(autocommit=False, autoflush=False))
+db = SQLAlchemy()
 mail = Mail()
 redis = Redis()
