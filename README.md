@@ -7,11 +7,12 @@ Technologies used:
 * Celery for launching tasks.
 * Redis for storing celery task information.
 
-## General notes
+### General notes
 
-# Introduction
+## Introduction
 
-Setup:
+# Setup
+0. Purchase Mac.
 
 1. Create a virtualenv.
 
@@ -29,6 +30,38 @@ Setup:
  
     `$ cp -r pypi_modules/datatables env/lib/python3.5/site-packages`
 
+5. Create database tables.
+    `$ ./manage.py create_all`
+
+
+# Redis
+
+`redis-server` must be running for celery tasks to work. 
+
+6. Install and start redis.
+
+~~~
+    $ brew install redis
+    $ brew services start redis
+~~~
+    
+
+7. Copy redis plists.
+
+    `$ cp /usr/local/Cellar/redis/3.2.3/homebrew.mxcl.redis.plist ~/Library/LaunchAgents/`
+
+8. Run the following command to auto-run `redis-server` on startup.
+    
+    `launchctl load ~/Library/LaunchAgents/homebrew.mxcl.redis.plist`
+
+9. Test if Redis server is running. If it replies, `$ PONG`, you're good~!
+    
+    `$ redis-cli ping`
+
+
+
+
+# Run server
 
 To run the server, do:
 
@@ -45,16 +78,4 @@ Launch celery tasks in the background for mlbgame update, rotoguru, etc.
 
 
 
-# Redis
-
-`redis-server` must be running for celery tasks to work.
-
-On Mac OSX, run the following command to auto-run `redis-server` on startup.
-    `launchctl load ~/Library/LaunchAgents/homebrew.mxcl.redis.plist`
-
-Test if Redis server is running.
-    
-`$ redis-cli ping`
-
-If it replies, `$ PONG`, you're good~!
 
