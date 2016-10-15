@@ -1,30 +1,37 @@
 Technologies used:
 
-    * Flask for web-server.
-    * Sqlalchemy for ORM.
-    * Mysql for production db.
-    * sqlite for development db.
-    * Celery for launching tasks.
-    * Redis for storing celery task information.
+* Flask for web-server.
+* Sqlalchemy for ORM.
+* Mysql for production db.
+* sqlite for development db.
+* Celery for launching tasks.
+* Redis for storing celery task information.
+
 ## General notes
 
 # Introduction
 
 Setup:
-    1. Create a virtualenv.
-        `$ virtualenv env`
+1. Create a virtualenv.
+    $ virtualenv env
 
-    2. Install all packages using pip.
-        `$ pip install -r requirements.txt`
+2. Activate virtualenv.
+    $ source env/bin/activate 
+
+3. Install all packages using pip.
+    $ pip install -r requirements.txt
+
+4. Fix DataTables module (TEMPORARY).
+    $ cp -r pypi_modules/datatables env/lib/python3.5/site-packages
+
 
 To run the server, do:
-    `$ make run`
+    $ make run
 
 This will launch a Flask server and access it from `http://localhost:5000`.
 
 Launch celery tasks in the background for mlbgame update, rotoguru, etc.
-
-    `make celery`
+    make celery
 
 
 
