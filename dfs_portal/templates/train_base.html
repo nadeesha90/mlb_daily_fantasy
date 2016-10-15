@@ -16,12 +16,11 @@
                 </div>
                 <div class="x_content">
                     <br />
-                    <form class="form-horizontal form-label-left">
-
+                    <form class="form-horizontal form-label-left" action="{{ url_for('.fit') }}" method="POST">
                         <div class="form-group">
                             <label class="control-label col-md-3 col-sm-3 col-xs-12">Player Name</label>
                             <div class="col-md-9 col-sm-9 col-xs-12">
-                                <input id="player-name" type="text" placeholder="Player name" class="typeahead form-control col-md-10" style="float: left;" />
+                                <input id="player-name" type="text" placeholder="Player name" class="typeahead form-control col-md-10" style="float: left;" data-validate-length-range="3" required="required"  />
                                 <div id="player-name-container" style="position: relative; float: left; width: 400px; margin: 10px;"></div>
                             </div>
                         </div>
@@ -166,7 +165,11 @@
 <!-- CodeMirror -->
 <script src="/static/vendors/codemirror/lib/codemirror.js"></script>
 <script src="/static/vendors/codemirror/mode/yaml/yaml.js"></script>
+<!-- validator -->
+<script src="/static/vendors/validator/validator.min.js"></script>
+
 <!-- /jQuery autocomplete -->
+
 <script>
 $( function() {
     function split( val ) {
@@ -259,12 +262,29 @@ $(document).ready(function() {
 <!-- /bootstrap-daterangepicker -->
 <!-- /code mirror for yaml input -->
 <script>
-    var myCodeMirror = CodeMirror.fromTextArea(document.getElementById("hypers_textarea"), {
+var myCodeMirror = CodeMirror.fromTextArea(document.getElementById("hypers_textarea"), {
     lineNumbers: true,
     styleActiveLine: true,
     matchBrackets: true
-  });
+});
 </script>
 <!-- /code mirror for yaml input -->
+<script>
+$('form').submit(function(e) {
+    debugger;
+    e.preventDefault();
+    var submit = true;
+
+    // evaluate the form using generic validaing
+    if (!validator.checkAll($(this))) {
+        submit = false;
+    }
+
+    if (submit)
+        this.submit();
+
+    return false;
+});
+</script>
 
 {%- endblock scripts %}

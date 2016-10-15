@@ -13,7 +13,7 @@ from dfs_portal.core import flash
 from dfs_portal.extensions import redis, db
 from dfs_portal.models.mlb import *
 from dfs_portal.models.redis import POLL_SIMPLE_THROTTLE
-from dfs_portal.tasks.mlbgame import fetch_and_add_stat_lines_to_db
+from dfs_portal.tasks.mlbgame import fetch_and_add_stat_lines_to_db, fit_model
 from dfs_portal.utils.htools import lmap
 
 SLEEP_FOR = 0.1  # Seconds to wait in between checks.
@@ -179,5 +179,58 @@ def player_names():
     playerNames = [{'value': t[0], 'category': t[1]} for t in players]
     return jsonify(playerNames)
 
+
+@mlb_dashboard.route('/fit', methods=['POST'])
+def fit():
+    formData = request.form
+    if not formData:
+        return jsonify({'message': 'No input data provided',
+                        'data':formData }), 400
+
+
+    """Sync local database with data from MLBGAME """
+    if redis.exists(POLL_SIMPLE_THROTTLE):
+        return jsonify({'message': 'Already sycned once within the past 10 seconds. Not syncing until lock expires.',
+                        'data':formData}), 400
+
+    # Schedule the task.
+    task = fit_model.delay(formData)  # Schedule the task to execute ASAP.
+    session['messages'] = 'SHREK'
+
+    # Attempt to obtain the results.
+    for _ in range(int(WAIT_UP_TO / SLEEP_FOR)):
+        time.sleep(SLEEP_FOR)
+        if not task.ready():
+            continue  # Task is still running.
+        results = task.get(propagate=False)
+
+        if isinstance(results, Exception):
+            # The task crashed probably because of a bug in the code.
+            if str(results) == 'Failed to acquire lock.':
+                # Never mind, no bug. The task was probably running from Celery Beat when the user tried to run a second
+                # instance of the same task.
+                # Since the user is expecting this task to update the database, we'll tell them that results should be
+                # updated within the minute, since the previously-running task should finish shortly.
+                flash.info('Task scheduled, any new packages will appear within 1 minute.')
+                #return redirect(url_for('.index'))
+                return url_for('.index')
+            raise results  # HTTP 500.
+
+        if not results:
+            flash.info('No new packages found.')
+            #return redirect(url_for('.index'))
+            return url_for('.index')
+
+        if len(results) < 5:
+            flash.info('New packages: {}'.format(', '.join(results)))
+        else:
+            flash.modal('New packages found:\n{}'.format(', '.join(results)))
+        #return redirect(url_for('.index'))
+        return url_for('.index')
+
+    # If we get here, the timeout has expired and the task is still running.
+    flash.info('Task scheduled, any new packages will appear within 15 minutes.')
+    #return redirect(url_for('.index'))
+    return url_for('.index')
 
 
