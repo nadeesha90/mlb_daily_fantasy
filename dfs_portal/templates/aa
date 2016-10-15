@@ -1,0 +1,54 @@
+
+<!-- jQuery autocomplete -->
+<script>
+$(document).ready(function() {
+    /*
+        var cache = {};
+        $( "#player-name" ).autocomplete({
+            minLength: 2,
+            source: function( request, response ) {
+                debugger;
+                var term = request.term;
+                if ( term in cache ) {
+                    response( cache[ term ] );
+                    return;
+                }
+
+                response({1:2})
+                //$.getJSON( "{{ url_for('.player_names') }}", request, function( data, status, xhr ) {
+                    //debugger;
+                    //cache[ term ] = data;
+                    //response( data );
+                //});
+            }
+        });
+        */
+    var availableTags = [
+      "ActionScript",
+      "AppleScript",
+      "Asp",
+      "BASIC",
+      "C",
+      "C++",
+      "Clojure",
+      "COBOL",
+      "ColdFusion",
+      "Erlang",
+      "Fortran",
+      "Groovy",
+      "Haskell",
+      "Java",
+      "JavaScript",
+      "Lisp",
+      "Perl",
+      "PHP",
+      "Python",
+      "Ruby",
+      "Scala",
+      "Scheme"
+    ];
+    $( "#player-name" ).autocomplete({
+      source: availableTags
+    });
+    });
+</script>

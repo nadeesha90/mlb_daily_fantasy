@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    <script src="dfs_portal/static/vendors/jquery/dist/jquery.js"></script> 
+    <script src="dfs_portal/static/vendors/typeahead/typeahead.bundle.js"></script>
+    </head>
+<body>
+
+
+<div id="prefetch">
+  <input class="typeahead" type="text" placeholder="Co winners for Best Picture">
+</div>
+
+<script>
+$(document).ready(function() {
+var countries = new Bloodhound({
+  datumTokenizer: Bloodhound.tokenizers.whitespace,
+  queryTokenizer: Bloodhound.tokenizers.whitespace,
+  identify: function(obj) { return obj.team; },
+  prefetch: '../countries.json'
+});
+
+function defaults(q, sync) {
+  debugger;
+  if (q === '') {
+    sync(countries.get('Detroit Lions', 'Green Bay Packers', 'Chicago Bears'));
+  }
+
+  else {
+    countries.search(q, sync);
+  }
+}
+// passing in `null` for the `options` arguments will result in the default
+// options being used
+$('#prefetch .typeahead').typeahead(null, {
+  name: 'countries',
+  source: defaults
+});
+
+
+});
+</script>
+</body>
+</html>
+

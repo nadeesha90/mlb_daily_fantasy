@@ -33,20 +33,40 @@ category_filter=['default', 'success', 'info', 'warning', 'danger']) %}
         </style>
         {% endif %}
 
+        <style type="text/css">
+            .ui-autocomplete-category {
+            font-weight: bold;
+            padding: .2em .4em;
+            margin: .8em 0 .2em;
+            line-height: 1.5;
+            }
+        </style>
+
 
         <!-- Bootstrap -->
         <link href="/static/vendors/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+
+
+        <!-- jquery UI -->
+        <link href="/static/vendors/jquery-ui-1.12.1.custom/jquery-ui.css" rel="stylesheet">
         <!-- Font Awesome -->
         <link href="/static/vendors/font-awesome/css/font-awesome.min.css" rel="stylesheet">
         <!-- iCheck -->
         <link href="/static/vendors/iCheck/skins/flat/green.css" rel="stylesheet">
+        <!-- bootstrap-wysiwyg -->
+        <link href="/static/vendors/google-code-prettify/bin/prettify.min.css" rel="stylesheet">
+        <!-- Select2 -->
+        <link href="/static/vendors/select2/dist/css/select2.min.css" rel="stylesheet">
+        <!-- Switchery -->
+        <link href="/static/vendors/switchery/dist/switchery.min.css" rel="stylesheet">
+        <!-- Codemirror -->
+        <link rel="stylesheet" href="/static/vendors/codemirror/lib/codemirror.css">
         <!-- Datatables -->
         <link href="/static/vendors/datatables.net-bs/css/dataTables.bootstrap.min.css" rel="stylesheet">
         <link href="/static/vendors/datatables.net-buttons-bs/css/buttons.bootstrap.min.css" rel="stylesheet">
         <link href="/static/vendors/datatables.net-fixedheader-bs/css/fixedHeader.bootstrap.min.css" rel="stylesheet">
         <link href="/static/vendors/datatables.net-responsive-bs/css/responsive.bootstrap.min.css" rel="stylesheet">
         <link href="/static/vendors/datatables.net-scroller-bs/css/scroller.bootstrap.min.css" rel="stylesheet">
-
         <!-- Custom Theme Style -->
         <link href="/static/build/css/custom.min.css" rel="stylesheet">
 
@@ -76,6 +96,7 @@ category_filter=['default', 'success', 'info', 'warning', 'danger']) %}
                                     <li><a><i class="fa fa-table"></i>MLB<span class="fa fa-chevron-down"></span></a>
                                         <ul class="nav child_menu">
                                             <li><a href="/mlb/players">Players</a></li>
+                                            <li><a href="/mlb/train">Train</a></li>
                                         </ul>
                                     </li>
                                 </ul>
@@ -120,8 +141,12 @@ category_filter=['default', 'success', 'info', 'warning', 'danger']) %}
         {% block scripts -%}
         <!-- jQuery -->
         <script src="/static/vendors/jquery/dist/jquery.min.js"></script>
+        <!-- lodash -->
+        <script src="/static/vendors/lodash/lodash.core.js"></script>
         <!-- Bootstrap -->
         <script src="/static/vendors/bootstrap/dist/js/bootstrap.min.js"></script>
+        <!-- iCheck -->
+        <script src="/static/vendors/iCheck/icheck.min.js"></script>
         <!-- FastClick -->
         <script src="/static/vendors/fastclick/lib/fastclick.js"></script>
         <!-- NProgress -->
@@ -142,8 +167,13 @@ category_filter=['default', 'success', 'info', 'warning', 'danger']) %}
         <script src="/static/vendors/jszip/dist/jszip.min.js"></script>
         <script src="/static/vendors/pdfmake/build/pdfmake.min.js"></script>
         <script src="/static/vendors/pdfmake/build/vfs_fonts.js"></script>
+        <script src="/static/vendors/moment/moment.js"></script>
         <!-- Chart.js -->
         <script src="/static/vendors/Chart.js/dist/Chart.min.js"></script>
+        <!-- amCharts javascript sources -->
+		<script src="/static/vendors/amcharts/amcharts.js"></script>
+		<script src="/static/vendors/amcharts/serial.js"></script>
+		<script src="/static/vendors/amcharts/themes/light.js"></script>
         <!-- jQuery Sparklines -->
         <script src="/static/vendors/jquery-sparkline/dist/jquery.sparkline.min.js"></script>
         <!-- morris.js -->
@@ -167,7 +197,6 @@ category_filter=['default', 'success', 'info', 'warning', 'danger']) %}
         <script src="/static/production/js/flot/jquery.flot.spline.js"></script>
         <script src="/static/production/js/flot/curvedLines.js"></script>
         <!-- bootstrap-daterangepicker -->
-        <script src="/static/production/js/moment/moment.min.js"></script>
         <script src="/static/production/js/datepicker/daterangepicker.js"></script>
 
         <!-- Custom Theme Scripts -->

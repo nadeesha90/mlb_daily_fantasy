@@ -1,0 +1,74 @@
+<script>
+$(document).ready(function() {
+    var handleDataTableButtons = function() {
+        if ($("#{{ tableObj.tableId }}").length) {
+            $("#{{ tableObj.tableId }}").DataTable({
+                dom: "Bflrtip",
+                buttons: [
+                {
+                    extend: "copy",
+                    className: "btn-sm"
+                },
+                {
+                    extend: "csv",
+                    className: "btn-sm"
+                },
+                {
+                    extend: "excel",
+                    className: "btn-sm"
+                },
+                {
+                    extend: "pdfHtml5",
+                    className: "btn-sm"
+                },
+                {
+                    extend: "print",
+                    className: "btn-sm"
+                },
+                ],
+                "lengthMenu": [[5,10,25, -1], [5, 10, 25, "All"]],
+                /*"columns": [
+                  { "width": "5%" },
+                  { "width": "5%" },
+                  { "width": "10%" },
+                  { "width": "10%" },
+                  { "width": "5%", "searchable": false},
+                  { "width": "25%","searchable": false},
+                  ],*/
+                "columns": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    {"searchable": false},
+                    {"width": "400px", "searchable": false},
+                    {"searchable": false, "visible": false},
+                ],
+
+                responsive: true,
+                "processing": true,
+                "serverSide": true,
+                "deferRender": true,
+                "ajax": "{{ url_for(tableObj.tableUrl) }}",
+                "drawCallback": {{ tableObj.fn_tableDrawCallback }},
+                //"initComplete": tableInitCallBack,
+                //"createdRow": rowDrawCallBack,
+                //"initComplete": tableDrawCallBackPitchers2
+
+            });
+        }
+    };
+    TableManageButtons = function() {
+        "use strict";
+        return {
+            init: function() {
+                handleDataTableButtons();
+            }
+        };
+    }();
+
+    TableManageButtons.init();
+    //tableDrawCallBack2();
+});
+
+</script>

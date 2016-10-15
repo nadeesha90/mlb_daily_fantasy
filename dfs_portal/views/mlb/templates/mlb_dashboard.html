@@ -1,0 +1,6 @@
+{% extends 'dashboard_base.html' %}
+{% set tableObjs = [
+{'header':  'Pitchers', 'tableId': 'pitchers-table', 'v_chartData': 'pitchersDataObj', 'chartIdPrefix': 'p', 'fn_tableDrawCallback': 'pDrawCallback', 'tableUrl': '.pitchers_table'},
+{'header':  'Batters', 'tableId': 'batters-table', 'v_chartData': 'battersDataObj', 'chartIdPrefix': 'b', 'fn_tableDrawCallback': 'bDrawCallback', 'tableUrl': '.batters_table'},
+] -%}
+
