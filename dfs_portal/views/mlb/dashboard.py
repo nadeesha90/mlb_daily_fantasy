@@ -174,10 +174,10 @@ def player_names():
     if not query:
         return jsonify({'message': 'No input data provided', 'data': {}}), 400
     players = Player.query\
-                    .with_entities(Player.full_name, Player.player_type)\
+                    .with_entities(Player.full_name, Player.player_type, Player.id)\
                     .filter(Player.full_name.like('%{}%'.format(query))).all()
     #playerNames = lmap(lambda t: t[0], players)
-    playerNames = [{'value': t[0], 'category': t[1]} for t in players]
+    playerNames = [{'value': t[0], 'category': t[1], 'id': t[2]} for t in players]
     return jsonify(playerNames)
 
 
@@ -195,6 +195,7 @@ def fit():
                         'data':formData}), 400
 
     # Schedule the task.
+    pu.db
     task = fit_model.delay(formData)  # Schedule the task to execute ASAP.
     session['messages'] = 'SHREK'
 

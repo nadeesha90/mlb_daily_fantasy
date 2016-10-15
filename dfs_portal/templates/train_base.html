@@ -16,11 +16,11 @@
                 </div>
                 <div class="x_content">
                     <br />
-                    <form class="form-horizontal form-label-left" action="{{ url_for('.fit') }}" method="POST">
+                    <form id='train_form' class="form-horizontal form-label-left" onsubmit="processForm()">
                         <div class="form-group">
                             <label class="control-label col-md-3 col-sm-3 col-xs-12">Player Name</label>
                             <div class="col-md-9 col-sm-9 col-xs-12">
-                                <input id="player-name" type="text" placeholder="Player name" class="typeahead form-control col-md-10" style="float: left;" data-validate-length-range="3" required="required"  />
+                                <input id="f_player_name" name="pname" type="text" placeholder="Player name" class="typeahead form-control col-md-10" style="float: left;" data-validate-length-range="3" required="required"  />
                                 <div id="player-name-container" style="position: relative; float: left; width: 400px; margin: 10px;"></div>
                             </div>
                         </div>
@@ -172,6 +172,7 @@
 
 <script>
 $( function() {
+    var selectedPlayerId;
     function split( val ) {
         return val.split( /,\s*/ );
     }
@@ -200,7 +201,7 @@ $( function() {
             });
         }
     });
-    $( "#player-name" )
+    $( "#f_player_name" )
         // don't navigate away from the field on tab when selecting an item
         .on( "keydown", function( event ) {
             if ( event.keyCode === $.ui.keyCode.TAB &&
@@ -229,6 +230,9 @@ $( function() {
         select: function( event, ui ) {
             var terms = split( this.value );
             this.value = ui.item.value;
+            $.mynamespace = { 
+                selectedPlayerId: ui.item.id, 
+            }; 
             return false;
         }
     });
@@ -270,21 +274,46 @@ var myCodeMirror = CodeMirror.fromTextArea(document.getElementById("hypers_texta
 </script>
 <!-- /code mirror for yaml input -->
 <script>
+/*
 $('form').submit(function(e) {
-    debugger;
-    e.preventDefault();
-    var submit = true;
+debugger;
+e.preventDefault();
+var submit = true;
 
-    // evaluate the form using generic validaing
-    if (!validator.checkAll($(this))) {
-        submit = false;
-    }
+// evaluate the form using generic validaing
+if (!validator.checkAll($(this))) {
+submit = false;
+}
 
-    if (submit)
-        this.submit();
+if (submit)
+this.submit();
 
-    return false;
+return false;
 });
+ */
+function processForm() {
+    //Retreive the data from the form:
+    var data = $('#train_form').serializeArray();
+
+    //Add in additional data to the original form data:
+    data.push({name:'id', value: $.mynamespace.selectedPlayerId});
+
+    //Submit the form via Ajax POST request:
+    $.ajax({
+        type: 'POST',
+        url:  "{{ url_for('.fit') }}",
+        data:  data,
+        dataType: 'json'
+    }).done(function(data) {
+        //The code below is executed asynchronously, 
+        //meaning that it does not execute until the
+        //Ajax request has finished, and the response has been loaded.
+        //This code may, and probably will, load *after* any code that
+        //that is defined outside of it.
+        alert("Thanks for the submission!");
+        console.log("Response Data" +data); //Log the server response to console
+    });
+}
 </script>
 
 {%- endblock scripts %}
