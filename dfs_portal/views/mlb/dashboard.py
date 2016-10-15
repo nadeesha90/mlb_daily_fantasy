@@ -13,7 +13,8 @@ from dfs_portal.core import flash
 from dfs_portal.extensions import redis, db
 from dfs_portal.models.mlb import *
 from dfs_portal.models.redis import POLL_SIMPLE_THROTTLE
-from dfs_portal.tasks.mlbgame import fetch_and_add_stat_lines_to_db, fit_model
+from dfs_portal.tasks.mlbgame import fetch_and_add_stat_lines_to_db
+from dfs_portal.tasks.train import fit_model
 from dfs_portal.utils.htools import lmap
 
 SLEEP_FOR = 0.1  # Seconds to wait in between checks.
