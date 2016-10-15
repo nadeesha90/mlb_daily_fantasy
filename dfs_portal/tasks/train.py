@@ -42,6 +42,9 @@ from dfs_portal.models.redis import POLL_SIMPLE_THROTTLE, TOTAL_PROGRESS, CURREN
 
 from dfs_portal.config import HardCoded
 
+from dfs_portal.core import abstract_predictor as abs_p
+
+
 LOG = getLogger(__name__)
 #THROTTLE = 1 * 60 * 60
 THROTTLE = 10
@@ -497,7 +500,8 @@ def fetch_all_game_data(date):
 
 @celery.task(bind=True, soft_time_limit=120 * 60)
 @single_instance
-def fit_model(formData, startDate, endDate):
+def fit_model(formData):
+
 
     lock = redis.lock(POLL_SIMPLE_THROTTLE, timeout=int(THROTTLE))
     have_lock = lock.acquire(blocking=False)
@@ -505,9 +509,37 @@ def fit_model(formData, startDate, endDate):
         LOG.warning('poll_simple() task has already executed in the past 10 seconds. Rate limiting.')
         return None
     
+    try:
+        player = Player.query.get(1)
+    except IntegrityError:
+        return jsonify({'message': 'Player could not be found.'}), 400
+    if player is None:
+        return jsonify({'message': 'No player found with given id',
+                        'data':jsonData}), 400
+    
+    startDate  = parse_date('2016-08-08')
+    endDate    = parse_date('2016-08-16')
+    formData = {
+        'ptype': 'batter',
+        'player_id': player.id,
+        'model': {
+            'start_date': startDate,
+            'end_date': endDate,
+            'name': 'lasso',
+            'hypers': {'verbose': True, 'ewma_enabled': False, 'days_to_average': 10, 'shift_by_days': 1},
+            'data_transforms': ['ewma', 'shift'],
+        },
+        'features': {
+            'unknowns':['avg', 'bb', 'twob', 'h', 'hbp', 'hr', 'r', 'rbi', 'sb', 'so', 'threeb', 'ab'],
+            'knowns':[],
+        },
+        'target_col': 'fd_fpts',
+    }
+    playerType = formData['ptype']
     modelData = formData['model']
-    playerType = formData['player_type']
 
+
+    rdb.set_trace()
     try:
         model = Model.query \
                 .filter(Model.name == modelData['name'])\
@@ -518,8 +550,8 @@ def fit_model(formData, startDate, endDate):
                 .filter(Model.data_transforms == modelData['data_transforms'])\
                 .one()
     except NoResultFound:
-        modelObj = abs_p.get_predictor_obj(modelData['name'], hypers=modelData['hypers_dict'])
-        if playerType == 'Batter':
+        modelObj = abs_p.get_predictor_obj(modelData['name'], hypers=modelData['hypers'])
+        if playerType == 'batter':
             query = BatterStatLine.query\
                     .join(Game)\
                     .filter(BatterStatLine.player_id == player.id)\
