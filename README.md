@@ -12,26 +12,33 @@ Technologies used:
 # Introduction
 
 Setup:
+
 1. Create a virtualenv.
-    $ virtualenv env
+
+	`$ virtualenv env`
 
 2. Activate virtualenv.
-    $ source env/bin/activate 
+
+	`$ source env/bin/activate` 
 
 3. Install all packages using pip.
-    $ pip install -r requirements.txt
+    
+    `$ pip install -r requirements.txt`
 
 4. Fix DataTables module (TEMPORARY).
-    $ cp -r pypi_modules/datatables env/lib/python3.5/site-packages
+ 
+    `$ cp -r pypi_modules/datatables env/lib/python3.5/site-packages`
 
 
 To run the server, do:
-    $ make run
+
+`$ make run`
 
 This will launch a Flask server and access it from `http://localhost:5000`.
 
 Launch celery tasks in the background for mlbgame update, rotoguru, etc.
-    make celery
+   
+`$ make celery`
 
 
 
@@ -41,10 +48,13 @@ Launch celery tasks in the background for mlbgame update, rotoguru, etc.
 # Redis
 
 `redis-server` must be running for celery tasks to work.
+
 On Mac OSX, run the following command to auto-run `redis-server` on startup.
     `launchctl load ~/Library/LaunchAgents/homebrew.mxcl.redis.plist`
-Test if Redis server is running.
-    `$ redis-cli ping`
 
-If it replies, `PONG`, you're good~!
+Test if Redis server is running.
+    
+`$ redis-cli ping`
+
+If it replies, `$ PONG`, you're good~!
 
