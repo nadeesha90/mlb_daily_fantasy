@@ -539,7 +539,6 @@ def fit_model(formData):
     modelData = formData['model']
 
 
-    rdb.set_trace()
     try:
         model = Model.query \
                 .filter(Model.name == modelData['name'])\
@@ -550,6 +549,7 @@ def fit_model(formData):
                 .filter(Model.data_transforms == modelData['data_transforms'])\
                 .one()
     except NoResultFound:
+        rdb.set_trace()
         modelObj = abs_p.get_predictor_obj(modelData['name'], hypers=modelData['hypers'])
         if playerType == 'batter':
             query = BatterStatLine.query\
