@@ -43,7 +43,7 @@ from toolz import valmap, map, partial, compose, first, pipe, thread_first
 from toolz.itertoolz import accumulate, sliding_window
 #Custom modules
 from dfs_portal.utils.htools import order_dict, timing, d2l
-from dfs_portal.utils.custom_contracts import *
+#from dfs_portal.utils.custom_contracts import *
 from dfs_portal.core.transforms import df2xy
 
 #disable all contracts

@@ -11,6 +11,7 @@ import yaml
 from bs4 import BeautifulSoup
 import mlbgame
 import numpy as np
+import pandas as pd
 import pudb
 from flask import Flask, jsonify
 from toolz import compose, partial, valmap, pipe, merge
@@ -43,6 +44,8 @@ from dfs_portal.models.redis import POLL_SIMPLE_THROTTLE, TOTAL_PROGRESS, CURREN
 from dfs_portal.config import HardCoded
 
 from dfs_portal.core import abstract_predictor as abs_p
+
+from dfs_portal.core import transforms
 
 
 LOG = getLogger(__name__)
@@ -498,6 +501,15 @@ def fetch_all_game_data(date):
     return allDatas
 
 
+def apply_transforms(df, parameters):
+    rdb.set_trace()
+    transformFuncs = parameters['model']['data_transforms']
+    transformFuncs = [eval('transforms.' + func) for func in transformFuncs]
+    transformFuncs = [partial(func, parameters) for func in transformFuncs]
+    df = pipe (df, *transformFuncs)
+    return df
+
+
 @celery.task(bind=True, soft_time_limit=120 * 60)
 @single_instance
 def fit_model(formData):
@@ -508,6 +520,11 @@ def fit_model(formData):
     if not have_lock:
         LOG.warning('poll_simple() task has already executed in the past 10 seconds. Rate limiting.')
         return None
+    
+    # *** UNCOMMENT AFTERWARDS TO VALIDATE data    
+    #formData, errors = model_fitting_function_schema.load(formData)
+    #if errors:
+    #    return jsonify(message=errors, data=jsonData), 422
     
     try:
         player = Player.query.get(1)
@@ -549,7 +566,7 @@ def fit_model(formData):
                 .filter(Model.data_transforms == modelData['data_transforms'])\
                 .one()
     except NoResultFound:
-        rdb.set_trace()
+        #rdb.set_trace()
         modelObj = abs_p.get_predictor_obj(modelData['name'], hypers=modelData['hypers'])
         if playerType == 'batter':
             query = BatterStatLine.query\
@@ -557,16 +574,17 @@ def fit_model(formData):
                     .filter(BatterStatLine.player_id == player.id)\
                     .filter(
                             Game.date >= modelData['start_date'],
-                            Game.date < modelDate['end_date'])
+                            Game.date < modelData['end_date'])
         else:
             query = PitcherStatLine.query\
                     .join(Game)\
                     .filter(BatterStatLine.player_id == player.id)\
                     .filter(
-                            Game.date >= modelDate['start_date'],
-                            Game.date < modelDate['end_date'])
+                            Game.date >= modelData['start_date'],
+                            Game.date < modelData['end_date'])
         df = pd.read_sql(query.statement, query.session.bind)
         df = apply_transforms(df, formData)
+        #df = apply_transforms(df, modelData)
         fitSuccess = modelObj.fit(df, formData['features'], formData['target_col'], validationSplit=0.2)
         if fitSuccess:
             modelData['player'] = player

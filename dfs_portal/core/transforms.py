@@ -9,7 +9,7 @@ import pandas as pd
 from pandas.stats import moments
 
 
-from dfs.common.htools import d2l
+from dfs_portal.utils.htools import d2l
 
 def shift(params, df):
     ''' Shifts targetCol by nPrev times'''
@@ -20,7 +20,7 @@ def shift(params, df):
     '''
     features = params['features']
     targetCol = params['target_col']
-    nPrev = params['hypers']['shift_by_days']
+    nPrev = params['model']['hypers']['shift_by_days']
 
     unknownFeatures = features['unknowns']
     knownFeatures   = features['knowns']
@@ -67,7 +67,7 @@ def ewma(params, df):
     print('Ewma data')
     targetCol = params['target_col']
     features = params['features']
-    daysToAverage = params['hypers']['days_to_average']
+    daysToAverage = params['model']['hypers']['days_to_average']
     #unknownFeatures = features['unknowns']
     #knownFeatures   = features['knowns']
     dfX, dfy = df2xy(df, features, targetCol)
