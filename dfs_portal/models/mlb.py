@@ -132,7 +132,8 @@ class Model(Base):
     player_id = Column(Integer, ForeignKey('player.id'))
     player = relationship('Player', backref='models')
     modelObj = Column(PickleType)
-    name = Column(String(80), unique=True)
+    #name = Column(String(80), unique=True)
+    name = Column(String(80))
 
     start_date = Column(DateTime)
     end_date = Column(DateTime)

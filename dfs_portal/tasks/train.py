@@ -502,7 +502,6 @@ def fetch_all_game_data(date):
 
 
 def apply_transforms(df, parameters):
-    rdb.set_trace()
     transformFuncs = parameters['model']['data_transforms']
     transformFuncs = [eval('transforms.' + func) for func in transformFuncs]
     transformFuncs = [partial(func, parameters) for func in transformFuncs]
@@ -534,7 +533,7 @@ def fit_model(formData):
         return jsonify({'message': 'No player found with given id',
                         'data':jsonData}), 400
     
-    startDate  = parse_date('2016-08-08')
+    startDate  = parse_date('2016-08-09')
     endDate    = parse_date('2016-08-16')
     formData = {
         'ptype': 'batter',
@@ -566,7 +565,6 @@ def fit_model(formData):
                 .filter(Model.data_transforms == modelData['data_transforms'])\
                 .one()
     except NoResultFound:
-        #rdb.set_trace()
         modelObj = abs_p.get_predictor_obj(modelData['name'], hypers=modelData['hypers'])
         if playerType == 'batter':
             query = BatterStatLine.query\
@@ -585,7 +583,9 @@ def fit_model(formData):
         df = pd.read_sql(query.statement, query.session.bind)
         df = apply_transforms(df, formData)
         #df = apply_transforms(df, modelData)
+        rdb.set_trace()
         fitSuccess = modelObj.fit(df, formData['features'], formData['target_col'], validationSplit=0.2)
+        #df = modelObj.predict(df, formData['features'], formData['target_col'])
         if fitSuccess:
             modelData['player'] = player
             modelData['modelObj'] = modelObj
@@ -601,6 +601,8 @@ def fit_model(formData):
     return jsonify({'message': 'Fit model player.',
             'data': None
             })
+
+
 
 
 # fetch_and_add_stat_lines_to_db(startDate, endDate)

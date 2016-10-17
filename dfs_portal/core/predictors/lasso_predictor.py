@@ -70,30 +70,34 @@ class LassoPredictor (Persistent):
             success = False
         return success
 
-    def predict (self, df):
-        pass
+    def predict (self, df, features, targetCol):
+        XPred = df2xy(df, features, targetCol)[0]
+        yPred = self.model.predict(XPred)
+        df['pred' + targetCol] = yPred
+        return df
 
 
-    def score (self, userXTest):
-        '''
-        :returns: Score calculated by taking the last yTrain (all data)
-        and comparing to predicted result.
-        '''
-        if self.modelScore is None:
-            lastDate = self.dates[-1]
-            actualY = self.yTrains[lastDate]
-            preddf = self.predict(userXTest)
-            preddf = loads(preddf, preserve_order=True)
-            preddf = pd.DataFrame(preddf['arr'], columns = [self.targetCol])
-            predY = preddf[self.targetCol]
-            predY = predY.shift(-self.batchSize)
-            predY = predY.iloc[:-self.batchSize]
+    #def score (self, userXTest):
+    #    # *** Needs reworking!
+    #    '''
+    #    :returns: Score calculated by taking the last yTrain (all data)
+    #    and comparing to predicted result.
+    #    '''
+    #    if self.modelScore is None:
+    #        lastDate = self.dates[-1]
+    #        actualY = self.yTrains[lastDate]
+    #        #preddf = self.predict(userXTest)
+    #        preddf = loads(preddf, preserve_order=True)
+    #        preddf = pd.DataFrame(preddf['arr'], columns = [self.targetCol])
+    #        predY = preddf[self.targetCol]
+    #        predY = predY.shift(-self.batchSize)
+    #        predY = predY.iloc[:-self.batchSize]
 
-            score = metrics.r2_score(actualY, predY)
-            self.modelScore = score
-        else:
-            score = self.modelScore
-        return score
+    #        score = metrics.r2_score(actualY, predY)
+    #        self.modelScore = score
+    #    else:
+    #        score = self.modelScore
+    #    return score
 
     def lc (self):
         '''
