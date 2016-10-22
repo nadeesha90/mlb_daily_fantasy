@@ -5,7 +5,7 @@ import sys
 import re
 from pprint import pprint
 from calendar import Calendar
-from datetime import datetime
+from datetime import datetime, timedelta
 #Pypi modules
 import yaml
 from bs4 import BeautifulSoup
@@ -508,6 +508,29 @@ def apply_transforms(df, parameters):
     df = pipe (df, *transformFuncs)
     return df
 
+def query_player_stat_line(playerId, playerType, startDate, endDate):
+    if playerType == 'batter':
+        query = BatterStatLine.query\
+                .join(Game)\
+                .filter(BatterStatLine.player_id == playerId)\
+                .filter(
+                        Game.date >= startDate,
+                        Game.date < endDate)
+    else:
+        query = PitcherStatLine.query\
+                .join(Game)\
+                .filter(PitcherStatLine.player_id == playerId)\
+                .filter(
+                        Game.date >= startDate,
+                        Game.date < endDate)
+    return query
+
+
+def reset_to_start_of_week(date):
+    day_of_week = date.weekday()
+    beginning_of_week = date - timedelta(day_of_week)
+    return beginning_of_week
+
 
 @celery.task(bind=True, soft_time_limit=120 * 60)
 @single_instance
@@ -533,8 +556,13 @@ def fit_model(formData):
         return jsonify({'message': 'No player found with given id',
                         'data':jsonData}), 400
     
-    startDate  = parse_date('2016-08-09')
-    endDate    = parse_date('2016-08-16')
+    startDate  = pipe('2016-08-09',
+            parse_date,
+            reset_to_start_of_week)
+    #endDate    = parse_date('2016-08-16')
+    endDate = pipe('2016-08-16',
+            parse_date,
+            reset_to_start_of_week)
     formData = {
         'ptype': 'batter',
         'player_id': player.id,
@@ -566,26 +594,12 @@ def fit_model(formData):
                 .one()
     except NoResultFound:
         modelObj = abs_p.get_predictor_obj(modelData['name'], hypers=modelData['hypers'])
-        if playerType == 'batter':
-            query = BatterStatLine.query\
-                    .join(Game)\
-                    .filter(BatterStatLine.player_id == player.id)\
-                    .filter(
-                            Game.date >= modelData['start_date'],
-                            Game.date < modelData['end_date'])
-        else:
-            query = PitcherStatLine.query\
-                    .join(Game)\
-                    .filter(BatterStatLine.player_id == player.id)\
-                    .filter(
-                            Game.date >= modelData['start_date'],
-                            Game.date < modelData['end_date'])
+        query = query_player_stat_line(player.id, playerType, modelData['start_date'], modelData['end_date'])
         df = pd.read_sql(query.statement, query.session.bind)
         df = apply_transforms(df, formData)
-        #df = apply_transforms(df, modelData)
-        rdb.set_trace()
         fitSuccess = modelObj.fit(df, formData['features'], formData['target_col'], validationSplit=0.2)
-        #df = modelObj.predict(df, formData['features'], formData['target_col'])
+        
+        rdb.set_trace()
         if fitSuccess:
             modelData['player'] = player
             modelData['modelObj'] = modelObj
@@ -601,6 +615,84 @@ def fit_model(formData):
     return jsonify({'message': 'Fit model player.',
             'data': None
             })
+
+
+@celery.task(bind=True, soft_time_limit=120 * 60)
+@single_instance
+def predict_model(formData):
+    lock = redis.lock(POLL_SIMPLE_THROTTLE, timeout=int(THROTTLE))
+    have_lock = lock.acquire(blocking=False)
+    if not have_lock:
+        LOG.warning('poll_simple() task has already executed in the past 10 seconds. Rate limiting.')
+        return None
+    
+    # *** UNCOMMENT AFTERWARDS TO VALIDATE data    
+    #formData, errors = model_fitting_function_schema.load(formData)
+    #if errors:
+    #    return jsonify(message=errors, data=jsonData), 422
+    
+    try:
+        player = Player.query.get(1)
+    except IntegrityError:
+        return jsonify({'message': 'Player could not be found.'}), 400
+    if player is None:
+        return jsonify({'message': 'No player found with given id',
+                        'data':jsonData}), 400
+    
+    startDate   = pipe('2016-08-09',
+            parse_date,
+            reset_to_start_of_week)
+    endDate     = parse_date('2016-08-16')
+    pStartDate  = parse_date('2016-09-01')
+    pEndDate    = parse_date('2016-09-02')
+    formData = {
+        'ptype': 'batter',
+        'player_id': player.id,
+        'model': {
+            'start_date': startDate,
+            'end_date': endDate,
+            'name': 'lasso',
+            'hypers': {'verbose': True, 'ewma_enabled': False, 'days_to_average': 10, 'shift_by_days': 1},
+            'data_transforms': ['ewma', 'shift'],
+        },
+        'features': {
+            'unknowns':['avg', 'bb', 'twob', 'h', 'hbp', 'hr', 'r', 'rbi', 'sb', 'so', 'threeb', 'ab'],
+            'knowns':[],
+        },
+        'predict_start_date': pStartDate,
+        'predict_end_date': pEndDate,
+        'target_col': 'fd_fpts',
+    }
+    playerType = formData['ptype']
+    modelData = formData['model']
+
+
+    try:
+        model = Model.query \
+                .filter(Model.name == modelData['name'])\
+                .filter(Model.player_id == player.id)\
+                .filter(Model.start_date == modelData['start_date'])\
+                .filter(Model.end_date == modelData['end_date'])\
+                .filter(Model.hypers == modelData['hypers'])\
+                .filter(Model.data_transforms == modelData['data_transforms'])\
+                .one()
+    
+    except NoResultFound:
+        print ('No PlayerModel found for player, hyper, and dates.')
+        print ('Aborting...')
+        sys.exit(1)
+
+    except MultipleResultsFound:
+        print ('Found more than one PlayerModel for player and hyper and dates.')
+        print ('Aborting...')
+        sys.exit(1)
+    
+    query = query_player_stat_line(player.id, playerType, modelData['start_date'], modelData['end_date'])
+    df = pd.read_sql(query.statement, query.session.bind)
+    df = apply_transforms(df, formData)
+    df = model.predict(df, formData['features'], formData['target_col'])
+    return df
+
 
 
 
