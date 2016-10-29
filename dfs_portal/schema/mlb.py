@@ -87,15 +87,16 @@ class PitcherStatLineSchema(Schema):
 
 
 class ModelSchema(Schema):
-    id = fields.Int(dump_only=True)
     player = fields.Nested(PlayerSchema, validate=must_not_be_blank, only=['full_name', 'id'])
     # hyper = fields.Nested(ModelHyperSchema, validate=must_not_be_blank, only=['id'])
 
     # hypers = fields.List(required =True, cls_or_instance=fields.List(cls_or_instance=fields.Str))
     # hypers = LDict(required=True)
-    hypers = fields.Method('dictify', deserialize='listify')
+    hypers = fields.Method('dictify', required=True, deserialize='listify')
     hypers_dict = fields.Method('dictify', deserialize='dictify', load_from='hypers')
-    name = fields.Str(required=True)
+    data_cols = fields.Method('dictify', required=True, deserialize='listify')
+    data_cols_dict = fields.Method('dictify', deserialize='dictify', load_from='data_cols')
+    predictor_name = fields.Str(required=True)
     start_date = fields.DateTime(required=True)
     end_date = fields.DateTime(required=True)
     data_transforms = fields.List(required=True, cls_or_instance=fields.Str)
@@ -107,18 +108,18 @@ class ModelSchema(Schema):
         return obj
 
 
+
 class ModelFitSchema(Schema):
     model = fields.Nested('ModelSchema', required=True)
     player_id = fields.Int(required=True)
-    features = fields.Dict(required=True)
-    target_col = fields.Str(required=True)
-
+    player_name = fields.Str(required=True)
+    player_type = fields.Str(required=True)
 
 class ModelPredictSchema(Schema):
     player_id = fields.Int(required=True)
+    player_name = fields.Str(required=True)
     model = fields.Nested('ModelSchema', required=True)
-    features = fields.Dict(required=True)
-    target_col = fields.Str(required=True)
+    player_type = fields.Str(required=True)
 
 player_schema = PlayerSchema()
 players_schema = PlayerSchema(many=True)

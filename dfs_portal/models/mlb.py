@@ -133,11 +133,12 @@ class Model(Base):
     player = relationship('Player', backref='models')
     modelObj = Column(PickleType)
     #name = Column(String(80), unique=True)
-    name = Column(String(80))
+    predictor_name = Column(String(80))
 
     start_date = Column(DateTime)
     end_date = Column(DateTime)
 
     hypers = Column(PickleType)
     data_transforms = Column(PickleType)
+    data_cols = Column(PickleType)
     # hyper_id   = Column(Integer, ForeignKey('modelhyper.id'))

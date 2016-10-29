@@ -8,6 +8,8 @@ import difflib
 import requests
 import datetime
 import collections
+import namedtupled
+from copy import deepcopy
 from celery.contrib import rdb
 from json_tricks.np import loads
 from monad.decorators import maybe
@@ -164,7 +166,7 @@ def timing(f):
     return wrap
 
 def d2nt(dictionary):
-    return collections.namedtuple('GenericDict', dictionary.keys())(**dictionary)
+    return namedtupled.map(deepcopy(dictionary))
 
 def hjrequest(client, url, rkey, params={}, typ='get', retdf=False):
 

@@ -3,6 +3,10 @@ import time
 import numpy as np
 from dateutil.parser import parse as parse_date
 
+import toolz
+from dfs_portal.utils.htools import d2nt
+
+import yaml
 from flask import redirect, render_template, url_for, request, jsonify, session
 from datatables import ColumnDT, DataTables
 from sqlalchemy.orm import subqueryload, joinedload, contains_eager, immediateload
@@ -14,7 +18,7 @@ from dfs_portal.extensions import redis, db
 from dfs_portal.models.mlb import *
 from dfs_portal.models.redis import POLL_SIMPLE_THROTTLE
 from dfs_portal.tasks.mlbgame import fetch_and_add_stat_lines_to_db
-from dfs_portal.tasks.train import fit_model
+from dfs_portal.tasks.train import fit_task
 from dfs_portal.utils.htools import lmap
 from dfs_portal.core.abstract_predictor import get_available_predictors
 from dfs_portal.core.transforms import get_available_transforms
@@ -210,9 +214,8 @@ def fit():
 
     #Clean up the formData.
     newFormData = parse_formdata(formData)
-    pu.db
     # Schedule the task.
-    task = fit_model.delay(newFormData)  # Schedule the task to execute ASAP.
+    task = fit_task.delay(newFormData)  # Schedule the task to execute ASAP.
     session['messages'] = 'SHREK'
 
     # Attempt to obtain the results.
@@ -279,13 +282,41 @@ def parse_formdata(formData):
             newFormData[key] = lst
         else:
             newFormData[key] = value
+    newFormData['predictor_name'] = newFormData.pop('select_predictor')
+    newFormData['data_transforms'] = newFormData.pop('select_datatransforms')
+    newFormData['hypers'] = newFormData.pop('f_hypers')
+    newFormData['data_cols'] = newFormData.pop('f_datacols')
+
     newFormData = parse_date_range(newFormData)
+    newFormData['hypers'] = parse_yaml(newFormData['hypers'])
+    newFormData['data_cols'] = parse_yaml(newFormData['data_cols'])
+    newFormData['model'] = parse_modelData(newFormData)
+    
     return newFormData
+
+def parse_modelData(formData):
+    modelData = {
+            'hypers':formData.pop('hypers'),
+            'data_cols':formData.pop('data_cols'),
+            'predictor_name':formData.pop('predictor_name'),
+            'start_date':formData.pop('start_date'),
+            'end_date':formData.pop('end_date'),
+            'data_transforms':formData.pop('data_transforms')}
+    return modelData
+
+
+
+def parse_yaml(yamlStr):
+    parsedDict = toolz.pipe(yamlStr,
+            lambda x: x.replace('\t','    '),
+            lambda x: x.replace('\r',''),
+            yaml.load)
+    return parsedDict
 
 def parse_date_range(formData):
     dates = formData['daterange'].split('-')
     startDate, endDate = lmap(parse_date, dates)
-    formData['startDate'] = startDate
-    formData['endDate'] = endDate
+    formData['start_date'] = startDate
+    formData['end_date'] = endDate
     del formData['daterange']
     return formData

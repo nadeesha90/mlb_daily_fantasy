@@ -1,7 +1,10 @@
+import namedtupled
 import pandas as pd
 from pandas.stats import moments
 
+from celery.contrib import rdb
 from dfs_portal.utils.htools import d2l
+
 
 def shift(params, df):
     ''' Shifts targetCol by nPrev times'''
@@ -10,12 +13,12 @@ def shift(params, df):
     '''
     Creates X and Y tensors from data timeseries
     '''
-    features = params['features']
-    targetCol = params['target_col']
-    nPrev = params['model']['hypers']['shift_by_days']
+    features = params.data_cols.features
+    targetCol = params.data_cols.target_col
+    nPrev = params.hypers.shift_by_days
 
-    unknownFeatures = features['unknowns']
-    knownFeatures   = features['knowns']
+    unknownFeatures = features.unknowns
+    knownFeatures   = features.knowns
     dfX, dfy = df2xy(df, features, targetCol)
     #dfX = df.ix[:,allFeatures]
     #dfy = df.ix[:,[targetCol]]
@@ -57,17 +60,14 @@ def shift(params, df):
 def ewma(params, df):
     ''' Ewmas specified columns of the df '''
     print('Ewma data')
-    targetCol = params['target_col']
-    features = params['features']
-    daysToAverage = params['model']['hypers']['days_to_average']
     #unknownFeatures = features['unknowns']
     #knownFeatures   = features['knowns']
-    dfX, dfy = df2xy(df, features, targetCol)
+    dfX, dfy = df2xy(df, params.data_cols.features, params.data_cols.target_col)
     resultDf = pd.DataFrame()
     for col in dfX.columns:
         series = dfX[col]
         # take EWMA in both directions with a smaller span term
-        fwd = moments.ewma(series, span=daysToAverage)          # take EWMA in fwd direction
+        fwd = moments.ewma(series, span=params.hypers.days_to_average)          # take EWMA in fwd direction
         #bwd = ewma( series[::-1], span=self.daysToAverage )    # take EWMA in bwd direction
         #c = np.vstack(( fwd, bwd[::-1] )) # lump fwd and bwd together
         #c = np.mean( c, axis=0 )          # average
@@ -86,7 +86,7 @@ def ewma(params, df):
     return df
 
 def df2xy (df, features, targetCol):
-    allFeatures = d2l(features)
+    allFeatures = d2l(namedtupled.reduce(features))
     dfX = df.ix[:,allFeatures]
     dfy = df.ix[:,[targetCol]]
     return dfX, dfy

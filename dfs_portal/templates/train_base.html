@@ -33,21 +33,21 @@
                             </div>
 
                             <div class="form-group" id="pname_form">
-                                <label for="pname" class="control-label col-md-3 col-sm-3 col-xs-12">Player Name</label>
+                                <label for="player_name" class="control-label col-md-3 col-sm-3 col-xs-12">Player Name</label>
                                 <div class="col-md-9 col-sm-9 col-xs-12">
-                                    <input id="f_player_name" name="pname" type="text" placeholder="Player name" class="typeahead form-control col-md-10" style="float: left;" data-parsley-length="[3, 20]" required=""/>
+                                    <input id="f_player_name" name="player_name" type="text" placeholder="Player name" class="typeahead form-control col-md-10" style="float: left;" data-parsley-length="[3, 20]" required=""/>
                                     <div id="player-name-container" style="position: relative; float: left; width: 400px; margin: 10px;"></div>
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label for="ptype" class="control-label col-md-3 col-sm-3 col-xs-12">Player type</label>
+                                <label for="player_type" class="control-label col-md-3 col-sm-3 col-xs-12">Player type</label>
                                 <div class="col-md-6 col-sm-6 col-xs-12">
                                     <div id="p-type" class="btn-group" data-toggle="buttons">
                                         <label class="btn btn-default" data-toggle-class="btn-primary" data-toggle-passive-class="btn-default">
-                                            <input type="radio" name="ptype" value="batter" required=""/> Batter
+                                            <input type="radio" name="player_type" value="batter" required=""/> Batter
                                         </label>
                                         <label class="btn btn-default" data-toggle-class="btn-primary" data-toggle-passive-class="btn-default">
-                                            <input type="radio" name="ptype" value="pitcher"/> Pitcher
+                                            <input type="radio" name="player_type" value="pitcher"/> Pitcher
                                         </label>
                                     </div>
                                 </div>
@@ -78,6 +78,12 @@
                                 <label class="control-label col-md-3 col-sm-3 col-xs-12" for="textarea">Hypers</label>
                                 <div class="col-md-6 col-sm-6 col-xs-12">
                                     <textarea id="f_hypers_textarea" name="f_hypers" class="form-control col-md-7 col-xs-12"></textarea>
+                                </div>
+                            </div>
+                            <div class="item form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="textarea">Data Columns</label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <textarea id="f_datacols_textarea" name="f_datacols" class="form-control col-md-7 col-xs-12"></textarea>
                                 </div>
                             </div>
 
@@ -273,7 +279,13 @@ $(document).ready(function() {
 <!-- /Selectize -->
 <!-- /code mirror for yaml input -->
 <script>
-var myCodeMirror = CodeMirror.fromTextArea(document.getElementById("f_hypers_textarea"), {
+var hypersCodeMirror = CodeMirror.fromTextArea(document.getElementById("f_hypers_textarea"), {
+    lineNumbers: true,
+    styleActiveLine: true,
+    matchBrackets: true,
+    theme: 'base16-light',
+});
+var datacolsCodeMirror = CodeMirror.fromTextArea(document.getElementById("f_datacols_textarea"), {
     lineNumbers: true,
     styleActiveLine: true,
     matchBrackets: true,
@@ -295,7 +307,7 @@ $(document).ready(function() {
 
 
             //Add in additional data to the original form data:
-            data.push({name:'id', value: $.mynamespace.selectedPlayerId});
+            data.push({name:'player_id', value: $.mynamespace.selectedPlayerId});
 
             //Submit the form via Ajax POST request:
             $.ajax({
