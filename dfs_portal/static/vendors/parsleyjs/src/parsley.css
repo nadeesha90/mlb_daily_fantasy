@@ -6,6 +6,7 @@ textarea.parsley-success {
   border: 1px solid #D6E9C6;
 }
 
+label.parsley-error,
 input.parsley-error,
 select.parsley-error,
 textarea.parsley-error {

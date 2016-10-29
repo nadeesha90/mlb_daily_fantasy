@@ -1,10 +1,6 @@
-import sys
-from os.path import dirname, realpath
-root = dirname(dirname(realpath(__file__)))
-sys.path.append(root)
-
 # Python core modules
 import importlib
+import pkgutil
 
 def get_predictor_obj (predictorName, hypers={}):
     if not predictorName :
@@ -17,6 +13,10 @@ def get_predictor_obj (predictorName, hypers={}):
     pObj = predictorClass (hypers)
     return pObj
 
+def get_available_predictors():
+    parent = importlib.import_module('dfs_portal.core.predictors')
+    predictors = [name.replace('_predictor', '') for _, name, _ in pkgutil.walk_packages(parent.__path__)]
 
+    return predictors
 if __name__ == '__main__':
     pass

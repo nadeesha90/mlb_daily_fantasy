@@ -8,137 +8,89 @@
         </div>
 
         <div class="clearfix"></div>
-        <div class="col-md-6 col-xs-12">
-            <div class="x_panel">
-                <div class="x_title">
-                    <h2>Train player models</h2>
-                    <div class="clearfix"></div>
-                </div>
-                <div class="x_content">
-                    <br />
-                    <form id='train_form' class="form-horizontal form-label-left" onsubmit="processForm()">
-                        <div class="form-group">
-                            <label class="control-label col-md-3 col-sm-3 col-xs-12">Player Name</label>
-                            <div class="col-md-9 col-sm-9 col-xs-12">
-                                <input id="f_player_name" name="pname" type="text" placeholder="Player name" class="typeahead form-control col-md-10" style="float: left;" data-validate-length-range="3" required="required"  />
-                                <div id="player-name-container" style="position: relative; float: left; width: 400px; margin: 10px;"></div>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="control-label col-md-3 col-sm-3 col-xs-12">Player type</label>
-                            <div class="col-md-6 col-sm-6 col-xs-12">
-                                <div id="gender" class="btn-group" data-toggle="buttons">
-                                    <label class="btn btn-default" data-toggle-class="btn-primary" data-toggle-passive-class="btn-default">
-                                        <input type="radio" name="ptype" value="batter">Batter
-                                    </label>
-                                    <label class="btn btn-primary" data-toggle-class="btn-primary" data-toggle-passive-class="btn-default">
-                                        <input type="radio" name="ptype" value="pitcher"> Pitcher
-                                    </label>
+        <div class="row">
+            <div class="col-md-12 col-sm-12 col-xs-12">
+                <div class="x_panel">
+                    <div class="x_title">
+                        <h2>Train player models</h2>
+                        <div class="clearfix"></div>
+                    </div>
+                    <div class="x_content">
+                        <br />
+                        <form id="train_form" class="form-horizontal form-label-left" data-parsley-validate="">
+                            <div class="form-group">
+                                <label for="train_select" class="control-label col-md-3 col-sm-3 col-xs-12">Train players</label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <div id="train-select" class="btn-group" data-toggle="buttons">
+                                        <label class="btn btn-default" data-toggle-class="btn-primary" data-toggle-passive-class="btn-default">
+                                            <input type="radio" name="train_select" value="all" checked /> All
+                                        </label>
+                                        <label class="btn btn-default" data-toggle-class="btn-primary" data-toggle-passive-class="btn-default">
+                                            <input type="radio" name="train_select" value="one" /> One
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="control-label col-md-3 col-sm-3 col-xs-12">Predictor</label>
-                            <div class="col-md-9 col-sm-9 col-xs-12">
-                                <select id="select_predictor" class="select2_single form-control" tabindex="-1">
-                                    <option></option>
-                                    <option value="AK">Alaska</option>
-                                    <option value="HI">Hawaii</option>
-                                    <option value="CA">California</option>
-                                    <option value="NV">Nevada</option>
-                                    <option value="OR">Oregon</option>
-                                    <option value="WA">Washington</option>
-                                    <option value="AZ">Arizona</option>
-                                    <option value="CO">Colorado</option>
-                                    <option value="ID">Idaho</option>
-                                    <option value="MT">Montana</option>
-                                    <option value="NE">Nebraska</option>
-                                    <option value="NM">New Mexico</option>
-                                    <option value="ND">North Dakota</option>
-                                    <option value="UT">Utah</option>
-                                    <option value="WY">Wyoming</option>
-                                    <option value="AR">Arkansas</option>
-                                    <option value="IL">Illinois</option>
-                                    <option value="IA">Iowa</option>
-                                    <option value="KS">Kansas</option>
-                                    <option value="KY">Kentucky</option>
-                                    <option value="LA">Louisiana</option>
-                                    <option value="MN">Minnesota</option>
-                                    <option value="MS">Mississippi</option>
-                                    <option value="MO">Missouri</option>
-                                    <option value="OK">Oklahoma</option>
-                                    <option value="SD">South Dakota</option>
-                                    <option value="TX">Texas</option>
-                                </select>
-                            </div>
-                        </div>
 
-                        <div class="form-group">
-                            <label class="control-label col-md-3 col-sm-3 col-xs-12">Transforms</label>
-                            <div class="col-md-9 col-sm-9 col-xs-12">
-                                <select id="select_datatransforms" class="select2_multiple form-control" multiple="multiple">
-                                    <option>Choose option</option>
-                                    <option>Option one</option>
-                                    <option>Option two</option>
-                                    <option>Option three</option>
-                                    <option>Option four</option>
-                                    <option>Option five</option>
-                                    <option>Option six</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="control-label col-md-3 col-sm-3 col-xs-12">Switch</label>
-                            <div class="col-md-9 col-sm-9 col-xs-12">
-                                <div class="">
-                                    <label>
-                                        <input type="checkbox" class="js-switch" checked /> Checked
-                                    </label>
-                                </div>
-                                <div class="">
-                                    <label>
-                                        <input type="checkbox" class="js-switch" /> Unchecked
-                                    </label>
-                                </div>
-                                <div class="">
-                                    <label>
-                                        <input type="checkbox" class="js-switch" disabled="disabled" /> Disabled
-                                    </label>
-                                </div>
-                                <div class="">
-                                    <label>
-                                        <input type="checkbox" class="js-switch" disabled="disabled" checked="checked" /> Disabled Checked
-                                    </label>
+                            <div class="form-group" id="pname_form">
+                                <label for="pname" class="control-label col-md-3 col-sm-3 col-xs-12">Player Name</label>
+                                <div class="col-md-9 col-sm-9 col-xs-12">
+                                    <input id="f_player_name" name="pname" type="text" placeholder="Player name" class="typeahead form-control col-md-10" style="float: left;" data-parsley-length="[3, 20]" required=""/>
+                                    <div id="player-name-container" style="position: relative; float: left; width: 400px; margin: 10px;"></div>
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="control-label col-md-3 col-sm-3 col-xs-12">Date range</label>
-                            <div class="col-md-9 col-sm-9 col-xs-12">
-                                <input type="text" style="width: 200px" name="daterange" id="daterange" class="form-control" value="03/18/2013 - 03/23/2013" />
+                            <div class="form-group">
+                                <label for="ptype" class="control-label col-md-3 col-sm-3 col-xs-12">Player type</label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <div id="p-type" class="btn-group" data-toggle="buttons">
+                                        <label class="btn btn-default" data-toggle-class="btn-primary" data-toggle-passive-class="btn-default">
+                                            <input type="radio" name="ptype" value="batter" required=""/> Batter
+                                        </label>
+                                        <label class="btn btn-default" data-toggle-class="btn-primary" data-toggle-passive-class="btn-default">
+                                            <input type="radio" name="ptype" value="pitcher"/> Pitcher
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="item form-group">
-                            <label class="control-label col-md-3 col-sm-3 col-xs-12" for="textarea">Textarea <span class="required">*</span>
-                            </label>
-                            <div class="col-md-6 col-sm-6 col-xs-12">
-                                <textarea id="hypers_textarea" name="textarea" class="form-control col-md-7 col-xs-12"></textarea>
+                            <div class="form-group">
+                                <label for="select_predictor" class="control-label col-md-3 col-sm-3 col-xs-12">Predictor</label>
+                                <div class="col-md-9 col-sm-9 col-xs-12">
+                                    <select id="select_predictor" name="select_predictor" required="" placeholder="Specify predictor..." data-parsley-validate-if-empty="true"/>
+                                    </select>
+                                </div>
                             </div>
-                        </div>
 
-
-
-                        <div class="ln_solid"></div>
-                        <div class="form-group">
-                            <div class="col-md-9 col-sm-9 col-xs-12 col-md-offset-3">
-                                <button type="submit" class="btn btn-primary">Cancel</button>
-                                <button type="submit" class="btn btn-success">Submit</button>
+                            <div class="form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12">Transforms</label>
+                                <div class="col-md-9 col-sm-9 col-xs-12">
+                                    <select id="select_datatransforms" name="select_datatransforms" multiple="multiple" placeholder="Specify list of transforms...">
+                                    </select>
+                                </div>
                             </div>
-                        </div>
 
-                    </form>
+                            <div class="form-group" id="daterange_form">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12">Date range</label>
+                                <div class="col-md-9 col-sm-9 col-xs-12">
+                                    <input type="text" style="width: 200px" name="daterange" id="daterange" class="form-control"/>
+                                </div>
+                            </div>
+                            <div class="item form-group">
+                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="textarea">Hypers</label>
+                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                    <textarea id="f_hypers_textarea" name="f_hypers" class="form-control col-md-7 col-xs-12"></textarea>
+                                </div>
+                            </div>
+
+                            <div class="invalid-form-error-message"></div>
+                            <div class="ln_solid"></div>
+                            <div class="form-group">
+                                <div class="col-md-9 col-sm-9 col-xs-12 col-md-offset-3">
+                                    <button type="submit" class="btn btn-success">Submit</button>
+                                </div>
+                            </div>
+
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
@@ -150,7 +102,7 @@
 
 {% block scripts -%}
 {{ super() }}
-<!-- jQuery typeahead -->
+<!-- jQuery ui autocomplete -->
 <script src="/static/vendors/jquery-ui-1.12.1.custom/jquery-ui.js"></script>
 
 <script src="/static/vendors/bootstrap-wysiwyg/js/bootstrap-wysiwyg.min.js"></script>
@@ -162,17 +114,53 @@
 <script src="/static/vendors/switchery/dist/switchery.min.js"></script>
 <!-- Select2 -->
 <script src="/static/vendors/select2/dist/js/select2.full.min.js"></script>
+<!-- Selectize -->
+<script src="/static/vendors/selectize-dups/dist/js/standalone/selectize.js"></script>
 <!-- CodeMirror -->
 <script src="/static/vendors/codemirror/lib/codemirror.js"></script>
 <script src="/static/vendors/codemirror/mode/yaml/yaml.js"></script>
-<!-- validator -->
-<script src="/static/vendors/validator/validator.min.js"></script>
+<!-- parsley Js -->
+<script src="/static/vendors/parsleyjs/dist/parsley.js"></script>
+<!-- FastClick -->
+<script src="/static/vendors/fastclick/lib/fastclick.js"></script>
+<!-- NProgress -->
+<script src="/static/vendors/nprogress/nprogress.js"></script>
 
-<!-- /jQuery autocomplete -->
 
 <script>
 $( function() {
-    var selectedPlayerId;
+    // Show/hide player_name selector based on train_select
+    togglePlayerNameSelect();
+    $("input[name=train_select]").change(togglePlayerNameSelect);
+    function togglePlayerNameSelect() {
+        var selectedOption = $("input:radio[name=train_select]:checked").val()
+        if (selectedOption == 'one') {
+            $("#pname_form").show();
+            $("#daterange_form").show();
+            
+        } else  {
+            $("#pname_form").hide();
+            $("#daterange_form").hide();
+        }
+    }
+       
+
+
+    $.mynamespace = { 
+        selectedPlayerId: -1
+    }; 
+    var dateRangeOptions = {
+        maxDate: null,
+        minDate: null,
+        startDate: null,
+        endDate: null,
+        format: 'DD/MM/YYYY',
+    }
+    var dateRangePicker = $('#daterange').daterangepicker(dateRangeOptions, function(start, end, label) {
+        console.log(start.toISOString(), end.toISOString(), label);
+    });
+    
+
     function split( val ) {
         return val.split( /,\s*/ );
     }
@@ -230,9 +218,21 @@ $( function() {
         select: function( event, ui ) {
             var terms = split( this.value );
             this.value = ui.item.value;
+            // Setting player ID into global namespace
             $.mynamespace = { 
                 selectedPlayerId: ui.item.id, 
             }; 
+            var startDate = ui.item.startDate;
+            var endDate = ui.item.endDate;
+
+            // Setting dateRangePicker max/mindate
+            dateRangePicker.prop('value', startDate + ' - ' + endDate);
+            dateRangeOptions.minDate = startDate;
+            dateRangeOptions.maxDate = endDate;
+            dateRangeOptions.startDate = startDate;
+            dateRangeOptions.endDate = endDate;
+            $('#daterange').data('daterangepicker').setOptions(dateRangeOptions , null);
+
             return false;
         }
     });
@@ -240,80 +240,80 @@ $( function() {
 </script>
 
 
-<!-- Select2 -->
+<!-- /Selectize -->
 <script>
 $(document).ready(function() {
-    $("#select_predictor").select2({
-        placeholder: "Select a predictor...",
-        allowClear: true
+    var $select = $('#select_predictor').selectize({
+        maxItems: 1,
+        valueField: 'title',
+        labelField: 'title',
+        searchField: 'title',
+        options: [
+        {% for id, predictor in predictors %}
+        { id:{{ id }}, title: '{{ predictor }}' },
+        {% endfor %}
+        ],
     });
-    $("#select_datatransforms").select2({
-        placeholder: "Select data transforms in order...",
-        allowClear: true
-    });
-});
-</script>
-<!-- /Select2 -->
 
-<!-- /bootstrap-daterangepicker -->
-<script>
-$(document).ready(function() {
-    $('#daterange').daterangepicker(null, function(start, end, label) {
-        console.log(start.toISOString(), end.toISOString(), label);
+    var $select = $('#select_datatransforms').selectize({
+        maxItems: null,
+        valueField: 'title',
+        labelField: 'title',
+        searchField: 'title',
+        hideSelected: false, // from original null
+        duplicates: true, // from original false
+        options: [
+        {% for id, transform in transforms %}
+        { id:{{ id }}, title: '{{ transform }}' },
+        {% endfor %}
+        ],
     });
 });
 </script>
-<!-- /bootstrap-daterangepicker -->
+<!-- /Selectize -->
 <!-- /code mirror for yaml input -->
 <script>
-var myCodeMirror = CodeMirror.fromTextArea(document.getElementById("hypers_textarea"), {
+var myCodeMirror = CodeMirror.fromTextArea(document.getElementById("f_hypers_textarea"), {
     lineNumbers: true,
     styleActiveLine: true,
-    matchBrackets: true
+    matchBrackets: true,
+    theme: 'base16-light',
 });
 </script>
 <!-- /code mirror for yaml input -->
 <script>
-/*
-$('form').submit(function(e) {
-debugger;
-e.preventDefault();
-var submit = true;
+$(document).ready(function() {
+    $("#train_form").on('submit', function(e){
+        e.preventDefault();
+        var form = $(this);
 
-// evaluate the form using generic validaing
-if (!validator.checkAll($(this))) {
-submit = false;
-}
+        form.parsley().validate();
 
-if (submit)
-this.submit();
+        if (form.parsley().isValid()){
+            //Retreive the data from the form:
+            var data = $('#train_form').serializeArray();
 
-return false;
-});
- */
-function processForm() {
-    //Retreive the data from the form:
-    var data = $('#train_form').serializeArray();
 
-    //Add in additional data to the original form data:
-    data.push({name:'id', value: $.mynamespace.selectedPlayerId});
+            //Add in additional data to the original form data:
+            data.push({name:'id', value: $.mynamespace.selectedPlayerId});
 
-    //Submit the form via Ajax POST request:
-    $.ajax({
-        type: 'POST',
-        url:  "{{ url_for('.fit') }}",
-        data:  data,
-        dataType: 'json'
-    }).done(function(data) {
-        //The code below is executed asynchronously, 
-        //meaning that it does not execute until the
-        //Ajax request has finished, and the response has been loaded.
-        //This code may, and probably will, load *after* any code that
-        //that is defined outside of it.
-        alert("Thanks for the submission!");
-        console.log("Response Data" +data); //Log the server response to console
+            //Submit the form via Ajax POST request:
+            $.ajax({
+                type: 'POST',
+                url:  "{{ url_for('.fit') }}",
+                data:  data,
+                dataType: 'json'
+            }).done(function(data) {
+                //The code below is executed asynchronously, 
+                //meaning that it does not execute until the
+                //Ajax request has finished, and the response has been loaded.
+                //This code may, and probably will, load *after* any code that
+                //that is defined outside of it.
+                alert("Thanks for the submission!");
+                console.log("Response Data" +data); //Log the server response to console
+            });
+        }
     });
-}
+});
 </script>
-
 {%- endblock scripts %}

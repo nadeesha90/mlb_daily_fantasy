@@ -16,7 +16,8 @@ from dfs_portal.models.redis import POLL_SIMPLE_THROTTLE
 from dfs_portal.tasks.mlbgame import fetch_and_add_stat_lines_to_db
 from dfs_portal.tasks.train import fit_model
 from dfs_portal.utils.htools import lmap
-
+from dfs_portal.core.abstract_predictor import get_available_predictors
+from dfs_portal.core.transforms import get_available_transforms
 SLEEP_FOR = 0.1  # Seconds to wait in between checks.
 WAIT_UP_TO = 5  # Wait up to these many seconds for task to finish. Won't block view for more than this.
 
@@ -50,8 +51,6 @@ def parse_datatable(playerType):
                          '</canvas>'
                          ])
         return result
-    def rnd(num):
-        pu.db
     def dated(l):
         return l
 
@@ -165,7 +164,9 @@ def sync():
 
 @mlb_dashboard.route('/train')
 def train():
-    return render_template('mlb_train.html')
+    return render_template('mlb_train.html',
+            predictors = enumerate(get_available_predictors()),
+            transforms = enumerate(get_available_transforms()))
 
 @mlb_dashboard.route('/player_names/')
 def player_names():
@@ -176,9 +177,22 @@ def player_names():
     players = Player.query\
                     .with_entities(Player.full_name, Player.player_type, Player.id)\
                     .filter(Player.full_name.like('%{}%'.format(query))).all()
-    #playerNames = lmap(lambda t: t[0], players)
-    playerNames = [{'value': t[0], 'category': t[1], 'id': t[2]} for t in players]
+    # For each player, return their startDate and endDate for their games.
+    dates = lmap(get_player_career_start_end, players)
+
+    playerNames = [{'value': playerTup[0], 'category': playerTup[1], 'id': playerTup[2], 'startDate': dateTup[0], 'endDate': dateTup[1]} for playerTup, dateTup in zip(players, dates)]
+    playerNames.append({'value': 'All', 'category': '-', 'id': -1, 'startDate': None, 'endDate': None})
     return jsonify(playerNames)
+
+@mlb_dashboard.route('/predictor_names/')
+def predictor_names():
+    query = request.args.get('q')
+    if not query:
+        return jsonify({'message': 'No input data provided', 'data': {}}), 400
+
+    predsJsons = dict(items=[{'id': i, 'text':v} for i,v in enumerate(preds)])
+    return jsonify(predsJsons)
+
 
 
 @mlb_dashboard.route('/fit', methods=['POST'])
@@ -194,9 +208,11 @@ def fit():
         return jsonify({'message': 'Already sycned once within the past 10 seconds. Not syncing until lock expires.',
                         'data':formData}), 400
 
-    # Schedule the task.
+    #Clean up the formData.
+    newFormData = parse_formdata(formData)
     pu.db
-    task = fit_model.delay(formData)  # Schedule the task to execute ASAP.
+    # Schedule the task.
+    task = fit_model.delay(newFormData)  # Schedule the task to execute ASAP.
     session['messages'] = 'SHREK'
 
     # Attempt to obtain the results.
@@ -236,3 +252,40 @@ def fit():
     return url_for('.index')
 
 
+def get_player_career_start_end(playerTup):
+    if playerTup[1] == 'batter':
+        query = BatterStatLine.query\
+                    .join(Game)\
+                    .filter(BatterStatLine.player_id == playerTup[2])\
+                    .order_by(Game.date).all()
+    else:
+        query = PitcherStatLine.query\
+                    .join(Game)\
+                    .filter(PitcherStatLine.player_id == playerTup[2])\
+                    .order_by(Game.date).all()
+    startDate = query[0].game.date
+    endDate = query[-1].game.date
+    startDateStr  = startDate.strftime('%d/%m/%Y')
+    endDateStr  = endDate.strftime('%d/%m/%Y')
+    return startDateStr, endDateStr
+
+def parse_formdata(formData):
+    newFormData = {}
+    #Extract lists from formdata
+    for key, value in formData.items():
+        lst = formData.getlist(key)
+        # If its a list, add it as a list
+        if len(lst) >= 2:
+            newFormData[key] = lst
+        else:
+            newFormData[key] = value
+    newFormData = parse_date_range(newFormData)
+    return newFormData
+
+def parse_date_range(formData):
+    dates = formData['daterange'].split('-')
+    startDate, endDate = lmap(parse_date, dates)
+    formData['startDate'] = startDate
+    formData['endDate'] = endDate
+    del formData['daterange']
+    return formData

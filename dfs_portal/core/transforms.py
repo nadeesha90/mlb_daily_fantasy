@@ -1,13 +1,5 @@
-import sys
-from os.path import dirname, realpath
-root = dirname(dirname(dirname(realpath(__file__))))
-parent_root = dirname(root)
-sys.path.append(root)
-sys.path.append(parent_root)
-
 import pandas as pd
 from pandas.stats import moments
-
 
 from dfs_portal.utils.htools import d2l
 
@@ -104,4 +96,7 @@ def xy2df (dfX, dfy):
     df.columns = columns
     return df
 
-
+def get_available_transforms():
+    """ Returns the available transforms defined in this module."""
+    transforms = ['shift', 'ewma']
+    return transforms
