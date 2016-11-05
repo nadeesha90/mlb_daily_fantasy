@@ -3,6 +3,7 @@ import time
 import numpy as np
 from dateutil.parser import parse as parse_date
 
+
 import toolz
 from dfs_portal.utils.htools import d2nt
 
@@ -69,19 +70,8 @@ def parse_datatable(playerType):
     columns.append(ColumnDT('full_name'))
     columns.append(ColumnDT('last_name'))
     columns.append(ColumnDT(playerType+'_fd_fpts_avg', filter=lambda x: round(x, 1)))
-    #columns.append(ColumnDT(statlineColumn+'.fd_fpts', filter=spanned))
     columns.append(ColumnDT(statlineColumn+'.fd_fpts'))
     columns.append(ColumnDT(statlineColumn+'.game.date', filter=dated))
-    #columns.append(ColumnDT(statlineColumn+'.fd_fpts'))
-    #columns.append(ColumnDT(statlineColumnName, filter=avg))
-
-    #subq = Player.query.with_entities(func.avg(BatterStatLine.fd_fpts).label('fptsavg'))\
-               #.subquery()
-    #players = Player.query\
-                #.select_entity_from(subq)\
-                #.options(subqueryload(statlineColumn))\
-                #.add_column('fptsavg')\
-                #.filter(Player.player_type == playerType)
 
     if playerType == 'batter':
         players = Player.query\
@@ -175,7 +165,7 @@ def train():
 @mlb_dashboard.route('/player_names/')
 def player_names():
 
-    query = request.args.get('term')
+    query = request.args.get('query')
     if not query:
         return jsonify({'message': 'No input data provided', 'data': {}}), 400
     players = Player.query\
@@ -185,7 +175,7 @@ def player_names():
     dates = lmap(get_player_career_start_end, players)
 
     playerNames = [{'value': playerTup[0], 'category': playerTup[1], 'id': playerTup[2], 'startDate': dateTup[0], 'endDate': dateTup[1]} for playerTup, dateTup in zip(players, dates)]
-    playerNames.append({'value': 'All', 'category': '-', 'id': -1, 'startDate': None, 'endDate': None})
+    #playerNames.append({'value': 'All', 'category': '-', 'id': -1, 'startDate': None, 'endDate': None})
     return jsonify(playerNames)
 
 @mlb_dashboard.route('/predictor_names/')
@@ -291,7 +281,7 @@ def parse_formdata(formData):
     newFormData['hypers'] = parse_yaml(newFormData['hypers'])
     newFormData['data_cols'] = parse_yaml(newFormData['data_cols'])
     newFormData['model'] = parse_modelData(newFormData)
-    
+
     return newFormData
 
 def parse_modelData(formData):
