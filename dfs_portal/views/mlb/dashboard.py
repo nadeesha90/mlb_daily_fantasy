@@ -203,8 +203,10 @@ def fit():
                         'data':formData}), 400
 
     #Clean up the formData.
-    newFormData = parse_formdata(formData)
+    #pu.db
+    #newFormData = parse_formdata(formData)
     # Schedule the task.
+    newFormData = formData
     task = fit_task.delay(newFormData)  # Schedule the task to execute ASAP.
     session['messages'] = 'SHREK'
 

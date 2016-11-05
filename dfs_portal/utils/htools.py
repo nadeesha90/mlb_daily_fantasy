@@ -1,4 +1,5 @@
 import time
+import datetime
 import json
 import click
 import hashlib
@@ -268,3 +269,9 @@ def cached_read_html_page(url, fPath):
 
     result = file_read(fPath) or requestAndWriteFile(url)
     return result
+
+
+def reset_to_start_of_week(date):
+    day_of_week = date.weekday()
+    beginning_of_week = date - datetime.timedelta(day_of_week)
+    return beginning_of_week

@@ -51,6 +51,7 @@ pipinstall: isvirtualenv
 
 clean:
 	redis-cli flushall
+	rm celery_results.db
 
 db:
 	./manage.py create_all

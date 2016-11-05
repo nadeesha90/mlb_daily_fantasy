@@ -7,7 +7,7 @@ import namedtupled
 from copy import deepcopy
 from pprint import pprint as print
 from calendar import Calendar
-from datetime import datetime, timedelta
+from datetime import datetime 
 #Pypi modules
 import yaml
 from bs4 import BeautifulSoup
@@ -26,13 +26,15 @@ from monad.types.maybe import Nothing, Just
 from monad.actions import tryout
 #from maybe import *
 
-from dfs_portal.utils.htools import hprogress, flatten, merge_fuzzy, cached_read_html_page, hjrequest, d2nt, isempty, dget, lmap
+from dfs_portal.utils.htools import hprogress, flatten, merge_fuzzy, cached_read_html_page, hjrequest, d2nt, isempty, dget, lmap, reset_to_start_of_week
+
 
 import pudb
 import pickle
 
 from distutils.version import LooseVersion
 from logging import getLogger
+from celery import group
 from celery.contrib import rdb
 from xmlrpc.client import ServerProxy
 
@@ -47,6 +49,7 @@ from dfs_portal.models.redis import POLL_SIMPLE_THROTTLE, TOTAL_PROGRESS, CURREN
 from dfs_portal.config import HardCoded
 
 from dfs_portal.core import abstract_predictor as abs_p
+from dfs_portal.core.dbutils import get_player_career_start_end
 
 from dfs_portal.core import transforms
 
@@ -66,7 +69,8 @@ def apply_transforms(df, parameters):
     df = pipe (df, *transformFuncs)
     return df
 
-def query_player_stat_line(playerId, playerType, startDate, endDate):
+def query_player_stat_line(playerTup):
+    # playerTup = (playerId, playerType, startDate, endDate)
     if playerType == 'batter':
         query = BatterStatLine.query\
                 .join(Game)\
@@ -84,28 +88,53 @@ def query_player_stat_line(playerId, playerType, startDate, endDate):
     return query
 
 
-def reset_to_start_of_week(date):
-    day_of_week = date.weekday()
-    beginning_of_week = date - timedelta(day_of_week)
-    return beginning_of_week
-
-
-@celery.task(bind=True, soft_time_limit=120 * 60)
-@single_instance
+@celery.task(bind=False, soft_time_limit=120 *60)
+#@single_instance
 def fit_task(formData):
-
 
     lock = redis.lock(POLL_SIMPLE_THROTTLE, timeout=int(THROTTLE))
     have_lock = lock.acquire(blocking=False)
     if not have_lock:
         LOG.warning('poll_simple() task has already executed in the past 10 seconds. Rate limiting.')
         return None
+
+
+    if formData['train_select'] == 'all':
+        allPlayers = Player.query\
+                .with_entities(Player.id)\
+                .filter(Player.player_type == formData['player_type'])\
+                .all()
+        allForms = []
+        for player in allPlayers:
+            tempDict = deepcopy(formData)
+            tempDict.update(player_id = player[0])
+            allForms.append(tempDict)
+        rdb.set_trace()
+        fit_all_players = group(fit_player.s(form) for form in allForms)
+        fit_all_players.apply_async()
+        #fit_all_players.get()
+    else:
+        #rdb.set_trace()
+        fit_player.delay(formData)
+
+
+
+@celery.task(bind=False, soft_time_limit=120 * 60)
+#@single_instance
+def fit_player(formData):
+    
+    #lock = redis.lock(POLL_SIMPLE_THROTTLE, timeout=int(THROTTLE))
+    #have_lock = lock.acquire(blocking=False)
+    #if not have_lock:
+    #    LOG.warning('poll_simple() task has already executed in the past 10 seconds. Rate limiting.')
+    #    return None
     
     # *** UNCOMMENT AFTERWARDS TO VALIDATE data    
-    formData, errors = model_fitting_function_schema.load(formData)
-    if errors:
-        return jsonify(message=errors, data=formData), 422
+    #formData, errors = model_fitting_function_schema.load(formData)
+    #if errors:
+    #    return jsonify(message=errors, data=formData), 422
 
+    formData['player_id'] = 1
     try:
         player = Player.query.get(formData['player_id'])
     except IntegrityError:
@@ -113,40 +142,7 @@ def fit_task(formData):
     if player is None:
         return jsonify({'message': 'No player found with given id',
                         'data':formData}), 400
-     
-    #rdb.set_trace()
-    #modelData, errors = model_schema.load(formData)
-    #if errors:
-    #    return jsonify(message=errors, data=formData), 422
 
-    #startDate  = pipe('2016-08-09',
-    #        parse_date,
-    #        reset_to_start_of_week)
-    ##endDate    = parse_date('2016-08-16')
-    #endDate = pipe('2016-08-16',
-    #        parse_date,
-    #        reset_to_start_of_week)
-    #formData = {
-    #    'ptype': 'batter',
-    #    'player_id': player.id,
-    #    'model': {
-    #        'start_date': startDate,
-    #        'end_date': endDate,
-    #        'name': 'lasso',
-    #        'hypers': {'verbose': True, 'ewma_enabled': False, 'days_to_average': 10, 'shift_by_days': 1},
-    #        'data_transforms': ['ewma', 'shift'],
-    #    },
-    #    'features': {
-    #        'unknowns':['avg', 'bb', 'twob', 'h', 'hbp', 'hr', 'r', 'rbi', 'sb', 'so', 'threeb', 'ab'],
-    #        'knowns':[],
-    #    },
-    #    'target_col': 'fd_fpts',
-    #}
-    #playerType = formData['ptype']
-    #modelData = formData['model']
-
-
-    rdb.set_trace()
     modelData = formData.get('model')
     try:
         model = Model.query \
@@ -163,7 +159,7 @@ def fit_task(formData):
         modelData['data_cols'] = modelData.pop('data_cols_dict')
 
         modelObj = abs_p.get_predictor_obj(modelData['predictor_name'], hypers=modelData['hypers'])
-        query = query_player_stat_line(player.id, formData['player_type'], modelData['start_date'], modelData['end_date'])
+        query = query_player_stat_line((player.id, formData['player_type'], modelData['start_date'], modelData['end_date']))
         df = pd.read_sql(query.statement, query.session.bind)
 
         df = apply_transforms(df, d2nt(modelData))
@@ -182,6 +178,9 @@ def fit_task(formData):
 
     db.session.commit()
     return
+
+
+
 
 
 
