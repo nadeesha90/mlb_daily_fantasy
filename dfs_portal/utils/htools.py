@@ -278,3 +278,41 @@ def reset_to_start_of_week(date):
     day_of_week = date.weekday()
     beginning_of_week = date - datetime.timedelta(day_of_week)
     return beginning_of_week
+
+
+
+
+
+def wait_for_task(task, wait_up_to, sleep_for):
+    # Attempt to obtain the results.
+    for _ in range(int(wait_up_to / sleep_for)):
+        time.sleep(sleep_for)
+        if not task.ready():
+            continue  # Task is still running.
+        results = task.get(propagate=False)
+        pu.db
+
+        if isinstance(results, Exception):
+            # The task crashed probably because of a bug in the code.
+            if str(results) == 'Failed to acquire lock.':
+                # Never mind, no bug. The task was probably running from Celery Beat when the user tried to run a second
+                # instance of the same task.
+                # Since the user is expecting this task to update the database, we'll tell them that results should be
+                # updated within the minute, since the previously-running task should finish shortly.
+                #return redirect(url_for('.index'))
+                return url_for('.index')
+            raise results  # HTTP 500.
+
+        if not results:
+            flash.info('No new packages found.')
+            #return redirect(url_for('.index'))
+            return url_for('.index')
+
+        if len(results) < 5:
+            flash.info('New packages: {}'.format(', '.join(results)))
+        else:
+            flash.modal('New packages found:\n{}'.format(', '.join(results)))
+        #return redirect(url_for('.index'))
+        return url_for('.index')
+
+    return hredirect(url_for('.train'), 'Training task scheduled.', typ='info')

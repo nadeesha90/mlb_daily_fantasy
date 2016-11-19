@@ -73,8 +73,8 @@ class LassoPredictor (Persistent):
     def predict (self, df, features, targetCol):
         XPred = df2xy(df, features, targetCol)[0]
         yPred = self.model.predict(XPred)
-        df['pred' + targetCol] = yPred
-        return df
+        #df['pred' + targetCol] = yPred
+        return yPred
 
 
     #def score (self, userXTest):

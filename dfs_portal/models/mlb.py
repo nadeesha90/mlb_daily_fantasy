@@ -141,4 +141,19 @@ class Model(Base):
     hypers = Column(PickleType)
     data_transforms = Column(PickleType)
     data_cols = Column(PickleType)
+
+    # hyper_id   = Column(Integer, ForeignKey('modelhyper.id'))
+
+
+class Pred(Base):
+    __tablename__ = 'pred'
+    id = Column(Integer, primary_key=True)
+    # players = association_proxy('player_models', 'player')
+    model_id = Column(Integer, ForeignKey('model.id'))
+    model = relationship('Model', backref='preds')
+    
+    start_date = Column(DateTime)
+    end_date = Column(DateTime)
+
+    pred_col = Column(PickleType)
     # hyper_id   = Column(Integer, ForeignKey('modelhyper.id'))

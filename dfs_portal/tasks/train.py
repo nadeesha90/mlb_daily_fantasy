@@ -42,9 +42,10 @@ from flask.ext.celery import single_instance
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 
 from dfs_portal.extensions import celery, db, redis
-from dfs_portal.models.mlb import Model, Player, BatterStatLine, PitcherStatLine, Game
+from dfs_portal.utils.ctools import wait_for_task, cResult, cStatus
+from dfs_portal.models.mlb import Model, Player, BatterStatLine, PitcherStatLine, Game, Pred
 from dfs_portal.schema.mlb import model_schema, model_fitting_function_schema
-from dfs_portal.models.redis import POLL_SIMPLE_THROTTLE, TOTAL_PROGRESS, CURRENT_PROGRESS
+from dfs_portal.models.redis import T_FIT_ALL, T_FIT_ID, T_PREDICT_ALL, T_PREDICT_ID
 
 from dfs_portal.config import HardCoded
 
@@ -57,6 +58,8 @@ from dfs_portal.core import transforms
 LOG = getLogger(__name__)
 #THROTTLE = 1 * 60 * 60
 THROTTLE = 10
+SLEEP_FOR = 0.1  # Seconds to wait in between checks.
+WAIT_UP_TO = 2  # Wait up to these many seconds for task to finish. Won't block view for more than this.
 
 
 ######################################
@@ -70,7 +73,8 @@ def apply_transforms(df, parameters):
     return df
 
 def query_player_stat_line(playerTup):
-    # playerTup = (playerId, playerType, startDate, endDate)
+    #playerTup = (playerId, playerType, startDate, endDate)
+    playerId, playerType, startDate, endDate = playerTup 
     if playerType == 'batter':
         query = BatterStatLine.query\
                 .join(Game)\
@@ -90,58 +94,51 @@ def query_player_stat_line(playerTup):
 
 @celery.task(bind=False, soft_time_limit=120 *60)
 #@single_instance
-def fit_task(formData):
+def fit_all_task(formData):
 
-    lock = redis.lock(POLL_SIMPLE_THROTTLE, timeout=int(THROTTLE))
+    lock = redis.lock(T_FIT_ALL, timeout=int(THROTTLE))
     have_lock = lock.acquire(blocking=False)
     if not have_lock:
-        LOG.warning('poll_simple() task has already executed in the past 10 seconds. Rate limiting.')
-        return None
+        LOG.warning('{} lock currently active.'.format(T_FIT_ALL))
+        return cResult(result=None, status=cStatus.locked)
 
 
-    if formData['train_select'] == 'all':
-        allPlayers = Player.query\
-                .with_entities(Player.id)\
-                .filter(Player.player_type == formData['player_type'])\
-                .all()
-        allForms = []
-        for player in allPlayers:
-            tempDict = deepcopy(formData)
-            tempDict.update(player_id = player[0])
-            allForms.append(tempDict)
-        rdb.set_trace()
-        fit_all_players = group(fit_player.s(form) for form in allForms)
-        fit_all_players.apply_async()
-        #fit_all_players.get()
-    else:
-        #rdb.set_trace()
-        fit_player.delay(formData)
-
-
+    allPlayers = Player.query\
+            .with_entities(Player.id)\
+            .filter(Player.player_type == formData['player_type'])\
+            .all()
+    allForms = []
+    for player in allPlayers:
+        tempDict = deepcopy(formData)
+        tempDict.update(player_id = player[0])
+        allForms.append(tempDict)
+    #rdb.set_trace()
+    fit_all_players = group(fit_player_task.s(form) for form in allForms)
+    tasks = fit_all_players.apply_async()
+    results = wait_for_task(tasks, WAIT_UP_TO, SLEEP_FOR)
+    return results
 
 @celery.task(bind=False, soft_time_limit=120 * 60)
 #@single_instance
-def fit_player(formData):
+def fit_player_task(formData):
     
-    #lock = redis.lock(POLL_SIMPLE_THROTTLE, timeout=int(THROTTLE))
-    #have_lock = lock.acquire(blocking=False)
-    #if not have_lock:
-    #    LOG.warning('poll_simple() task has already executed in the past 10 seconds. Rate limiting.')
-    #    return None
+    lockName = T_FIT_ID.format(formData['player_id'])
+    lock = redis.lock(lockName, timeout=int(THROTTLE))
+    have_lock = lock.acquire(blocking=False)
+    if not have_lock:
+        LOG.warning('{} lock currently active.'.format(lockName))
+        return cResult(result=dict(message='Celery task is locked.', data=None), status=cStatus.locked)
     
-    # *** UNCOMMENT AFTERWARDS TO VALIDATE data    
-    #formData, errors = model_fitting_function_schema.load(formData)
-    #if errors:
-    #    return jsonify(message=errors, data=formData), 422
+    formData, errors = model_fitting_function_schema.load(formData)
+    if errors:
+        return cResult(result=dict(message=errors, data=formData), status=cStatus.fail)
 
-    formData['player_id'] = 1
     try:
         player = Player.query.get(formData['player_id'])
     except IntegrityError:
-        return jsonify({'message': 'Player could not be found.'}), 400
+        return cResult(result=dict(message='Player could not be found.', data=None), status=cStatus.fail)
     if player is None:
-        return jsonify({'message': 'No player found with given id',
-                        'data':formData}), 400
+        return cResult(result=dict(message='No player found with given id', data=None), status=cStatus.fail)
 
     modelData = formData.get('model')
     try:
@@ -154,7 +151,14 @@ def fit_player(formData):
                 .filter(Model.data_transforms == modelData['data_transforms'])\
                 .filter(Model.data_cols == modelData['data_cols'])\
                 .one()
+        LOG.info('Using existing model')
     except NoResultFound:
+        LOG.warning('No model found, creating one.')
+        # need to store listified versions of dicts in db, but want to use dicts in logic
+        # storing lists in temporary variables, will refill after logic and before storing in db
+        hypersList = modelData['hypers']
+        data_colsList = modelData['data_cols']
+        
         modelData['hypers'] = modelData.pop('hypers_dict')
         modelData['data_cols'] = modelData.pop('data_cols_dict')
 
@@ -165,114 +169,82 @@ def fit_player(formData):
         df = apply_transforms(df, d2nt(modelData))
         fitSuccess = modelObj.fit(df, modelData['data_cols']['features'], modelData['data_cols']['target_col'], validationSplit=modelData['hypers']['validation_split'])
         
+        # storing listified versions back into model object before submitting to db
+        modelData['hypers'] = hypersList
+        modelData['data_cols'] = data_colsList
         if fitSuccess:
             modelData['player'] = player
             modelData['modelObj'] = modelObj
             model = Model(**modelData)
             db.session.add(model)
+            db.session.commit()
 
     except MultipleResultsFound:
-        print ('Found more than one PlayerModel for player and hyper and dates.')
-        print ('Aborting...')
-        sys.exit(1)
+        return cResult(result=dict(message='Found duplicate Models in the database.', data=None), status=cStatus.fail)
 
-    db.session.commit()
-    return
+    return cResult(result='fitp', status=cStatus.success)
 
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-@celery.task(bind=True, soft_time_limit=120 * 60)
-@single_instance
-def predict_task(formData):
-    lock = redis.lock(POLL_SIMPLE_THROTTLE, timeout=int(THROTTLE))
+@celery.task(bind=False, soft_time_limit=120 * 60)
+#@single_instance
+def predict_player_task(formData):
+    
+    lockName = T_PREDICT_ID.format(formData['player_id'])
+    lock = redis.lock(lockName, timeout=int(THROTTLE))
     have_lock = lock.acquire(blocking=False)
     if not have_lock:
-        LOG.warning('poll_simple() task has already executed in the past 10 seconds. Rate limiting.')
-        return None
+        LOG.warning('{} lock currently active.'.format(lockName))
+        return cResult(result=dict(message='Celery task is locked.', data=None), status=cStatus.locked)
     
-    # *** UNCOMMENT AFTERWARDS TO VALIDATE data    
-    #formData, errors = model_fitting_function_schema.load(formData)
-    #if errors:
-    #    return jsonify(message=errors, data=jsonData), 422
-    
+    formData, errors = model_predict_function_schema.load(formData)
+    if errors:
+        return cResult(result=dict(message=errors, data=formData), status=cStatus.fail)
+
     try:
-        player = Player.query.get(1)
+        player = Player.query.get(formData['player_id'])
     except IntegrityError:
-        return jsonify({'message': 'Player could not be found.'}), 400
+        return cResult(result=dict(message='Player could not be found.', data=None), status=cStatus.fail)
     if player is None:
-        return jsonify({'message': 'No player found with given id',
-                        'data':jsonData}), 400
-    
-    startDate   = pipe('2016-08-09',
-            parse_date,
-            reset_to_start_of_week)
-    endDate     = parse_date('2016-08-16')
-    pStartDate  = parse_date('2016-09-01')
-    pEndDate    = parse_date('2016-09-02')
-    formData = {
-        'ptype': 'batter',
-        'player_id': player.id,
-        'model': {
-            'start_date': startDate,
-            'end_date': endDate,
-            'name': 'lasso',
-            'hypers': {'verbose': True, 'ewma_enabled': False, 'days_to_average': 10, 'shift_by_days': 1},
-            'data_transforms': ['ewma', 'shift'],
-        },
-        'features': {
-            'unknowns':['avg', 'bb', 'twob', 'h', 'hbp', 'hr', 'r', 'rbi', 'sb', 'so', 'threeb', 'ab'],
-            'knowns':[],
-        },
-        'predict_start_date': pStartDate,
-        'predict_end_date': pEndDate,
-        'target_col': 'fd_fpts',
-    }
-    playerType = formData['ptype']
-    modelData = formData['model']
+        return cResult(result=dict(message='No player found with given id', data=None), status=cStatus.fail)
 
-
+    modelData = formData.get('model')
     try:
         model = Model.query \
-                .filter(Model.name == modelData['name'])\
+                .filter(Model.predictor_name == modelData['predictor_name'])\
                 .filter(Model.player_id == player.id)\
                 .filter(Model.start_date == modelData['start_date'])\
                 .filter(Model.end_date == modelData['end_date'])\
                 .filter(Model.hypers == modelData['hypers'])\
                 .filter(Model.data_transforms == modelData['data_transforms'])\
+                .filter(Model.data_cols == modelData['data_cols'])\
                 .one()
-    
+        LOG.info('Using existing model')
+        # need to store listified versions of dicts in db, but want to use dicts in logic
+        # storing lists in temporary variables, will refill after logic and before storing in db
+        hypersList = modelData['hypers']
+        data_colsList = modelData['data_cols']
+        
+        modelData['hypers'] = modelData.pop('hypers_dict')
+        modelData['data_cols'] = modelData.pop('data_cols_dict')
+
+        modelObj = abs_p.get_predictor_obj(modelData['predictor_name'], hypers=modelData['hypers'])
+        query = query_player_stat_line((player.id, formData['player_type'], modelData['pred_start_date'], modelData['pred_end_date']))
+        df = pd.read_sql(query.statement, query.session.bind)
+
+        df = apply_transforms(df, d2nt(modelData))
+        predCol = modelObj.predict(df, modelData['data_cols']['features'], modelData['data_cols']['target_col'])
+        
+        rdb.set_trace()
+        pred = Pred(**modelData)
+        db.session.commit()
+
     except NoResultFound:
-        print ('No PlayerModel found for player, hyper, and dates.')
-        print ('Aborting...')
-        sys.exit(1)
-
+        return cResult(result=dict(message='Did not find the Model in the database.', data=None), status=cStatus.fail)
     except MultipleResultsFound:
-        print ('Found more than one PlayerModel for player and hyper and dates.')
-        print ('Aborting...')
-        sys.exit(1)
-    
-    query = query_player_stat_line(player.id, playerType, modelData['start_date'], modelData['end_date'])
-    df = pd.read_sql(query.statement, query.session.bind)
-    df = apply_transforms(df, formData)
-    df = model.predict(df, formData['features'], formData['target_col'])
-    return df
+        return cResult(result=dict(message='Found duplicate Models in the database.', data=None), status=cStatus.fail)
+    return cResult(result='fitp', status=cStatus.success)
 
-
-
-
-
-# fetch_and_add_stat_lines_to_db(startDate, endDate)
 

@@ -11,7 +11,7 @@ from celery.signals import task_failure, worker_process_init
 from flask import current_app, render_template, request
 from markupsafe import Markup
 
-from dfs_portal.core.email import send_exception
+#from dfs_portal.core.email import send_exception
 from dfs_portal.extensions import db
 
 LOG = getLogger(__name__)
@@ -36,26 +36,26 @@ def celery_worker_init_db(**_):
 
 
 # Send email when a Celery task raises an unhandled exception.
-@task_failure.connect
-def celery_error_handler(sender, exception, **_):
-    exception_name = exception.__class__.__name__
-    task_module = sender.name
+#@task_failure.connect
+#def celery_error_handler(sender, exception, **_):
+#    exception_name = exception.__class__.__name__
+#    task_module = sender.name
     #send_exception('{} exception in {}'.format(exception_name, task_module))
 
 
 # Setup default error templates.
-@current_app.errorhandler(400)
-@current_app.errorhandler(403)
-@current_app.errorhandler(404)
-@current_app.errorhandler(500)
-def error_handler(e):
-    code = getattr(e, 'code', 500)  # If 500, e == the exception.
-    if code == 500:
-        # Send email to all ADMINS.
-        exception_name = e.__class__.__name__
-        view_module = request.endpoint
-        #send_exception('{} exception in {}'.format(exception_name, view_module))
-    return render_template('{}.html'.format(code)), code
+#@current_app.errorhandler(400)
+#@current_app.errorhandler(403)
+#@current_app.errorhandler(404)
+#@current_app.errorhandler(500)
+#def error_handler(e):
+    #code = getattr(e, 'code', 500)  # If 500, e == the exception.
+    #if code == 500:
+    #    # Send email to all ADMINS.
+    #    exception_name = e.__class__.__name__
+    #    view_module = request.endpoint
+    #    #send_exception('{} exception in {}'.format(exception_name, view_module))
+    #return render_template('{}.html'.format(code)), code
 
 
 # Template filters.

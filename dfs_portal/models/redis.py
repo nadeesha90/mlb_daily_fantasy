@@ -1,11 +1,20 @@
 """Redis keys used throughout the entire application (Flask, etc.)."""
 
-# Email throttling.
-EMAIL_THROTTLE = 'dfs_portal:email_throttle:{md5}'  # Lock.
+# Lock
+T_SYNC_PLAYERS = 'dfs_portal:t_sync_players'
 
-# PyPI throttling.
-POLL_SIMPLE_THROTTLE = 'dfs_portal:poll_simple_throttle'  # Lock.
+T_FIT_ALL = 'dfs_portal:t_fit_all'  # Lock.
+T_FIT_ID = 'dfs_portal:t_fit_id_{}'
 
-# PyPI throttling.
-TOTAL_PROGRESS = 'dfs_portal:total'  # Lock.
-CURRENT_PROGRESS = 'dfs_portal:current'  # Lock.
+T_PREDICT_ALL = 'dfs_portal:t_predict_all'  # Lock.
+T_PREDICT_ID = 'dfs_portal:t_predict_id_{}'
+
+
+
+# Progress
+FIT_ALL_TOTAL_PROGRESS = 'dfs_portal:fit_all_total_progress'  
+FIT_ALL_CURRENT_PROGRESS = 'dfs_portal:fit_all_current_progress'
+
+
+FIT_PLAYER_TOTAL_PROGRESS = 'dfs_portal:fit_player_total_progress'  
+FIT_PLAYER_CURRENT_PROGRESS = 'dfs_portal:fit_player_current_progress' 

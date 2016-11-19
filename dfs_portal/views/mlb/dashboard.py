@@ -16,14 +16,15 @@ from dfs_portal.blueprints import mlb_dashboard
 from dfs_portal.core import flash
 from dfs_portal.extensions import redis, db
 from dfs_portal.models.mlb import *
-from dfs_portal.models.redis import POLL_SIMPLE_THROTTLE
+from dfs_portal.models.redis import T_SYNC_PLAYERS  
 from dfs_portal.tasks.mlbgame import fetch_and_add_stat_lines_to_db
-from dfs_portal.tasks.train import fit_task
+from dfs_portal.tasks.train import fit_player_task, fit_all_task
 from dfs_portal.utils.htools import lmap, hredirect
+from dfs_portal.utils.ctools import wait_for_task, cResult, cStatus
 from dfs_portal.core.abstract_predictor import get_available_predictors
 from dfs_portal.core.transforms import get_available_transforms
 SLEEP_FOR = 0.1  # Seconds to wait in between checks.
-WAIT_UP_TO = 5  # Wait up to these many seconds for task to finish. Won't block view for more than this.
+WAIT_UP_TO = 2  # Wait up to these many seconds for task to finish. Won't block view for more than this.
 
 
 @mlb_dashboard.route('/players')
@@ -111,7 +112,7 @@ def sync():
     endDate = jsonData['endDate']
 
     """Sync local database with data from MLBGAME """
-    if redis.exists(POLL_SIMPLE_THROTTLE):
+    if redis.exists(T_SYNC_PLAYERS):
         return jsonify({'message': 'Already sycned once within the past 10 seconds. Not syncing until lock expires.',
                         'data':jsonData}), 400
 
@@ -195,57 +196,25 @@ def fit():
         return jsonify({'message': 'No input data provided',
                         'data':formData }), 400
 
-
-    """Sync local database with data from MLBGAME """
-    if redis.exists(POLL_SIMPLE_THROTTLE):
-        return jsonify({'message': 'Already sycned once within the past 10 seconds. Not syncing until lock expires.',
-                        'data':formData}), 400
-
     #Clean up the formData.
-    #pu.db
-    #newFormData = parse_formdata(formData)
-    # Schedule the task.
-    newFormData = formData
-    task = fit_task.delay(newFormData)  # Schedule the task to execute ASAP.
-    session['messages'] = 'SHREK'
-
-    # Attempt to obtain the results.
-    for _ in range(int(WAIT_UP_TO / SLEEP_FOR)):
-        time.sleep(SLEEP_FOR)
-        if not task.ready():
-            continue  # Task is still running.
-        results = task.get(propagate=False)
-
-        if isinstance(results, Exception):
-            # The task crashed probably because of a bug in the code.
-            if str(results) == 'Failed to acquire lock.':
-                # Never mind, no bug. The task was probably running from Celery Beat when the user tried to run a second
-                # instance of the same task.
-                # Since the user is expecting this task to update the database, we'll tell them that results should be
-                # updated within the minute, since the previously-running task should finish shortly.
-                flash.info('Task scheduled, any new packages will appear within 1 minute.')
-                #return redirect(url_for('.index'))
-                return url_for('.index')
-            raise results  # HTTP 500.
-
-        if not results:
-            flash.info('No new packages found.')
-            #return redirect(url_for('.index'))
-            return url_for('.index')
-
-        if len(results) < 5:
-            flash.info('New packages: {}'.format(', '.join(results)))
+    newFormData = parse_formdata(formData)
+    # Schedule the tasks
+    if newFormData['train_select'] == 'all':
+        task = fit_all_task.delay(newFormData)
+        results = wait_for_task(task, WAIT_UP_TO, SLEEP_FOR)
+        failResults = filter(lambda t: t.status != cStatus.success, results)
+        if not failResults:
+            return hredirect(url_for('.train'), 'Training all players scheduled.', typ='info')
         else:
-            flash.modal('New packages found:\n{}'.format(', '.join(results)))
-        #return redirect(url_for('.index'))
-        return url_for('.index')
+            return hredirect(url_for('.train'), 'Training all players failed.', typ='danger')
+    else:
+        task = fit_player_task.delay(newFormData)
+        result = wait_for_task(task, WAIT_UP_TO, SLEEP_FOR)
+        if result.status == cStatus.success:
+            return hredirect(url_for('.train'), 'Training player task scheduled.', typ='info')
+        else:
+            return hredirect(url_for('.train'), 'Error: {}'.format(result.result.get('message')), typ='danger')
 
-    # If we get here, the timeout has expired and the task is still running.
-    #flash.info('Task scheduled, any new packages will appear within 15 minutes.')
-    #return jsonify("hello")
-    return hredirect(url_for('.train'), 'Training task scheduled.', typ='info')
-    #return jsonify({'url':url_for('.index'), 'message:' 'Training task scheduled.')
-    #return redirect(url_for('mlb.index'))
 
 
 def get_player_career_start_end(playerTup):

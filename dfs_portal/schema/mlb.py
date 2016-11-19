@@ -112,14 +112,29 @@ class ModelSchema(Schema):
 class ModelFitSchema(Schema):
     model = fields.Nested('ModelSchema', required=True)
     player_id = fields.Int(required=True)
-    player_name = fields.Str(required=True)
     player_type = fields.Str(required=True)
 
 class ModelPredictSchema(Schema):
+    pred = fields.Nested('PredSchema', required=True)
     player_id = fields.Int(required=True)
-    player_name = fields.Str(required=True)
-    model = fields.Nested('ModelSchema', required=True)
     player_type = fields.Str(required=True)
+    pred_start_date = fields.DateTime(required=True)
+    pred_end_date = fields.DateTime(required=True)
+
+
+
+
+
+class PredSchema(Schema):
+    model = fields.Nested(ModelSchema, validate=must_not_be_blank, only=['id'])
+    start_date = fields.DateTime(required=True)
+    end_date = fields.DateTime(required=True)
+    pred_col = fields.List(cls_or_instance=fields.Float)
+
+
+
+
+
 
 player_schema = PlayerSchema()
 players_schema = PlayerSchema(many=True)
@@ -136,3 +151,4 @@ pitcher_stat_lines_schema = PitcherStatLineSchema(many=True)
 model_schema = ModelSchema()
 model_fitting_function_schema = ModelFitSchema()
 model_predict_function_schema = ModelPredictSchema()
+pred_schema = PredSchema()

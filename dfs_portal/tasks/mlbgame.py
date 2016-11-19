@@ -38,7 +38,7 @@ from flask.ext.celery import single_instance
 from dfs_portal.extensions import celery, db, redis
 from dfs_portal.models.mlb import *
 from dfs_portal.schema.mlb import *
-from dfs_portal.models.redis import POLL_SIMPLE_THROTTLE, TOTAL_PROGRESS, CURRENT_PROGRESS
+from dfs_portal.models.redis import T_SYNC_PLAYERS 
 
 from dfs_portal.config import HardCoded
 
@@ -504,7 +504,7 @@ def fetch_and_add_stat_lines_to_db(startDate, endDate):
     total = (endDate - startDate)
     total = total.days
     redis.set(TOTAL_PROGRESS, total)
-    lock = redis.lock(POLL_SIMPLE_THROTTLE, timeout=int(THROTTLE))
+    lock = redis.lock(T_SYNC_PLAYERS, timeout=int(THROTTLE))
     have_lock = lock.acquire(blocking=False)
     if not have_lock:
         LOG.warning('poll_simple() task has already executed in the past 10 seconds. Rate limiting.')
