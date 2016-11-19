@@ -3,8 +3,6 @@
 
 {% set flash_messages_normal = get_flashed_messages(with_categories=True,
 category_filter=['default', 'success', 'info', 'warning', 'danger']) %}
-{% set flash_messages_modal = get_flashed_messages(category_filter=['modal']) %}
-{% set flash_messages_well = get_flashed_messages(category_filter=['well']) %}
 
 {% set STATICS_ENABLE_RESOURCE_BOOTSTRAP_GROWL = True %}
 {% set STATICS_ENABLE_RESOURCE_CSSHAKE = True %}
@@ -25,7 +23,15 @@ category_filter=['default', 'success', 'info', 'warning', 'danger']) %}
         {%- endblock html_meta %}
 
         <title>seventeen thirty-eight</title>
-
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class=flashes>
+            {% for category, message in messages %}
+            <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+        {% endwith %}
         {%- block styles -%}
         {% if flash_messages_normal or flash_messages_modal or flash_messages_well %}
         <style type="text/css">
@@ -60,7 +66,7 @@ category_filter=['default', 'success', 'info', 'warning', 'danger']) %}
         <!-- Select2 -->
         <link href="/static/vendors/select2/dist/css/select2.min.css" rel="stylesheet">
         <!-- Selectize -->
-        <link href="/static/vendors/selectize/dist/css/selectize.css" rel="stylesheet">
+        <link href="/static/vendors/selectize-dups/dist/css/selectize.bootstrap3.css" rel="stylesheet">
         <!-- Switchery -->
         <link href="/static/vendors/switchery/dist/switchery.min.css" rel="stylesheet">
         <!-- Codemirror -->

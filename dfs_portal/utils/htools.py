@@ -18,6 +18,7 @@ from os.path import join, isfile
 from urllib.parse import urlparse
 from urllib.parse import urlencode
 from contracts import contract, new_contract
+from flask import jsonify
 #from maybe import Just, Nothing, lift, maybify
 from toolz import compose, partial
 
@@ -268,3 +269,6 @@ def cached_read_html_page(url, fPath):
 
     result = file_read(fPath) or requestAndWriteFile(url)
     return result
+
+def hredirect(url, message, typ='info'):
+    return jsonify({'url':url, 'message':message, 'type':typ})

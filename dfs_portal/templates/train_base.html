@@ -1,4 +1,69 @@
 {% extends 'base.html' %}
+{% block styles -%}
+{{ super() }}
+    <style type="text/css">
+		.selectize-control.select_player_name_form .selectize-dropdown > div {
+			border-bottom: 1px solid rgba(0,0,0,0.05);
+		}
+		.selectize-control.select_player_name_form .selectize-dropdown .by {
+			font-size: 11px;
+			opacity: 0.8;
+		}
+		.selectize-control.select_player_name_form .selectize-dropdown .by::before {
+			content: 'by ';
+		}
+		.selectize-control.select_player_name_form .selectize-dropdown .name {
+			font-weight: bold;
+			margin-right: 5px;
+		}
+		.selectize-control.select_player_name_form .selectize-dropdown .title {
+			display: block;
+		}
+		.selectize-control.select_player_name_form .selectize-dropdown .description {
+			font-size: 12px;
+			display: block;
+			color: #a0a0a0;
+			white-space: nowrap;
+			width: 100%;
+			text-overflow: ellipsis;
+			overflow: hidden;
+		}
+		.selectize-control.select_player_name_form .selectize-dropdown .meta {
+			list-style: none;
+			margin: 0;
+			padding: 0;
+			font-size: 10px;
+		}
+		.selectize-control.select_player_name_form .selectize-dropdown .meta li {
+			margin: 0;
+			padding: 0;
+			display: inline;
+			margin-right: 10px;
+		}
+		.selectize-control.select_player_name_form .selectize-dropdown .meta li span {
+			font-weight: bold;
+		}
+		.selectize-control.select_player_name_form::before {
+			-moz-transition: opacity 0.2s;
+			-webkit-transition: opacity 0.2s;
+			transition: opacity 0.2s;
+			content: ' ';
+			z-index: 2;
+			position: absolute;
+			display: block;
+			top: 12px;
+			right: 34px;
+			width: 16px;
+			height: 16px;
+			background: url("/static/production/images/spinner.gif");
+			background-size: 16px 16px;
+			opacity: 0;
+		}
+		.selectize-control.select_player_name_form.loading::before {
+			opacity: 0.4;
+		}
+		</style>
+{% endblock styles -%}
 
 {% block content -%}
 <!-- page content -->
@@ -37,7 +102,8 @@
                                 <div class="col-md-9 col-sm-9 col-xs-12">
                                     <!--<input id="f_player_name" name="player_name" type="text" placeholder="Player name" class="form-control col-md-10" style="float: left;" data-parsley-length="[2, 20]" required=""/>-->
                                     <!--<div id="player-name-container" style="position: relative; float: left; width: 400px; margin: 10px;"></div>-->
-                                    <input id="select_player_name" name="player_name" type="text" placeholder="Player name" data-parsley-length="[2, 20]" required=""/>
+                                    <!--<input id="select_player_name" name="player_name" type="text" placeholder="Choose player name..." data-parsley-length="[2, 20]" required=""/>-->
+                                    <select id="select_player_name" class="select_player_name_form" placeholder="Pick a player..."></select>
                                 </div>
                             </div>
                             <div class="form-group">
@@ -133,9 +199,20 @@
 <!-- NProgress -->
 <script src="/static/vendors/nprogress/nprogress.js"></script>
 
+<!-- /Selectize -->
 
 <script>
+
 $( function() {
+    function setDateRange (dateRangeObj, startDate, endDate) {
+        var dateRangeOptions = {
+            startDate: startDate,
+            endDate: endDate,
+            format: 'DD/MM/YYYY',
+        }
+        dateRangeObj.prop('value', startDate + ' - ' + endDate);
+        $('#daterange').data('daterangepicker').setOptions(dateRangeOptions , null);
+    }
     // Show/hide player_name selector based on train_select
     togglePlayerNameSelect();
     $("input[name=train_select]").change(togglePlayerNameSelect);
@@ -143,131 +220,50 @@ $( function() {
         var selectedOption = $("input:radio[name=train_select]:checked").val()
         if (selectedOption == 'one') {
             $("#pname_form").show();
-            $("#daterange_form").show();
+            //$("#daterange_form").show();
             
         } else  {
             $("#pname_form").hide();
-            $("#daterange_form").hide();
+            //$("#daterange_form").hide();
         }
     }
        
 
 
-    $.mynamespace = { 
+    $.globaldata = { 
         selectedPlayerId: -1
     }; 
     var dateRangeOptions = {
         maxDate: null,
         minDate: null,
-        startDate: null,
-        endDate: null,
+        startDate: '01/01/2011',
+        endDate: '01/01/2017',
         format: 'DD/MM/YYYY',
     }
     var dateRangePicker = $('#daterange').daterangepicker(dateRangeOptions, function(start, end, label) {
         console.log(start.toISOString(), end.toISOString(), label);
     });
     
-
-    function split( val ) {
-        return val.split( /,\s*/ );
-    }
-    function extractLast( term ) {
-        return split( term ).pop();
-    }
-    $.widget( "custom.catcomplete", $.ui.autocomplete, {
-        _create: function() {
-            this._super();
-            this.widget().menu( "option", "items", "> :not(.ui-autocomplete-category)" );
-        },
-        _renderMenu: function( ul, items ) {
-            var that = this,
-            currentCategory = "";
-            $.each( items, function( index, item ) {
-                var li;
-                if ( item.category != currentCategory ) {
-                    ul.append( "<li class='ui-autocomplete-category'>" + item.category + "</li>" );
-                    currentCategory = item.category;
-                }
-                li = that._renderItemData( ul, item );
-
-                if ( item.category ) {
-                    li.attr( "aria-label", item.category + " : " + item.label );
-                }
-            });
-        }
-    });
-    /*
-    $( "#f_player_name" )
-        // don't navigate away from the field on tab when selecting an item
-        .on( "keydown", function( event ) {
-            if ( event.keyCode === $.ui.keyCode.TAB &&
-                    $( this ).autocomplete( "instance" ).menu.active ) {
-                event.preventDefault();
-            }
-        })
-    // .autocomplete({
-    .catcomplete({
-        source: function( request, response ) {
-            $.getJSON( "{{ url_for('.player_names') }}", {
-                term: extractLast( request.term )
-            }, response );
-        },
-        search: function() {
-            // custom minLength
-            var term = extractLast( this.value );
-            if ( term.length < 2 ) {
-                return false;
-            }
-        },
-        focus: function() {
-            // prevent value inserted on focus
-            return false;
-        },
-        select: function( event, ui ) {
-            var terms = split( this.value );
-            this.value = ui.item.value;
-            // Setting player ID into global namespace
-            $.mynamespace = { 
-                selectedPlayerId: ui.item.id, 
-            }; 
-            var startDate = ui.item.startDate;
-            var endDate = ui.item.endDate;
-
-            // Setting dateRangePicker max/mindate
-            dateRangePicker.prop('value', startDate + ' - ' + endDate);
-            dateRangeOptions.minDate = startDate;
-            dateRangeOptions.maxDate = endDate;
-            dateRangeOptions.startDate = startDate;
-            dateRangeOptions.endDate = endDate;
-            $('#daterange').data('daterangepicker').setOptions(dateRangeOptions , null);
-
-            return false;
-        }
-    });
-    */
-} );
-</script>
-
-
-<!-- /Selectize -->
-<script>
-$(document).ready(function() {
-    $('#select_player_name').selectize({
+    var selectControl = $('#select_player_name').selectize({
         maxItems: 1,
-        valueField: 'title',
-        labelField: 'title',
-        searchField: 'title',
+        valueField: 'id',
+        labelField: 'value',
+        searchField: 'value',
+        optgroupField: 'category',
+        optgroups: [
+            {value: 'batter', label: 'Batters'},
+            {value: 'pitcher', label: 'Pitchers'}
+        ],
         create: false,
-        render: {
-            option: function(item, escape) {
-                debugger;
-            }
-        },
-        score: function(search) {
-            var score = this.getScoreFunction(search);
-            return function(item) {
-                return score(item) * (1 + Math.min(item.watchers / 100, 1));
-            };
+        closeAfterSelect: true,
+        onChange: function(value) {
+            var playerId = this.options[value].id;
+            var startDate = this.options[value].startDate;
+            var endDate = this.options[value].endDate;
+            $.globaldata = { 
+                selectedPlayerId: playerId,
+            }; 
+            setDateRange(dateRangePicker, startDate, endDate);
         },
         load: function(query, callback) {
             if (!query.length) return callback();
@@ -279,7 +275,7 @@ $(document).ready(function() {
                     callback();
                 },
                 success: function(res) {
-                    debugger;
+                    callback(res);
                 }
             });
         }
@@ -342,7 +338,7 @@ $(document).ready(function() {
 
 
             //Add in additional data to the original form data:
-            data.push({name:'player_id', value: $.mynamespace.selectedPlayerId});
+            data.push({name:'player_id', value: $.globaldata.selectedPlayerId});
 
             //Submit the form via Ajax POST request:
             $.ajax({
@@ -351,13 +347,7 @@ $(document).ready(function() {
                 data:  data,
                 dataType: 'json'
             }).done(function(data) {
-                //The code below is executed asynchronously, 
-                //meaning that it does not execute until the
-                //Ajax request has finished, and the response has been loaded.
-                //This code may, and probably will, load *after* any code that
-                //that is defined outside of it.
-                alert("Thanks for the submission!");
-                console.log("Response Data" +data); //Log the server response to console
+                hgrowl(data.message, data.type);
             });
         }
     });

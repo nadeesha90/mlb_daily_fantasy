@@ -1,11 +1,10 @@
 import pudb
 import time
 import numpy as np
+import toolz
 from dateutil.parser import parse as parse_date
 
 
-import toolz
-from dfs_portal.utils.htools import d2nt
 
 import yaml
 from flask import redirect, render_template, url_for, request, jsonify, session
@@ -20,7 +19,7 @@ from dfs_portal.models.mlb import *
 from dfs_portal.models.redis import POLL_SIMPLE_THROTTLE
 from dfs_portal.tasks.mlbgame import fetch_and_add_stat_lines_to_db
 from dfs_portal.tasks.train import fit_task
-from dfs_portal.utils.htools import lmap
+from dfs_portal.utils.htools import lmap, hredirect
 from dfs_portal.core.abstract_predictor import get_available_predictors
 from dfs_portal.core.transforms import get_available_transforms
 SLEEP_FOR = 0.1  # Seconds to wait in between checks.
@@ -240,9 +239,11 @@ def fit():
         return url_for('.index')
 
     # If we get here, the timeout has expired and the task is still running.
-    flash.info('Task scheduled, any new packages will appear within 15 minutes.')
-    #return redirect(url_for('.index'))
-    return url_for('.index')
+    #flash.info('Task scheduled, any new packages will appear within 15 minutes.')
+    #return jsonify("hello")
+    return hredirect(url_for('.train'), 'Training task scheduled.', typ='info')
+    #return jsonify({'url':url_for('.index'), 'message:' 'Training task scheduled.')
+    #return redirect(url_for('mlb.index'))
 
 
 def get_player_career_start_end(playerTup):

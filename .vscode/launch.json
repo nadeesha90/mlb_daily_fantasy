@@ -17,6 +17,11 @@
                 "WaitOnNormalExit",
                 "RedirectOutput"
             ]
+        },
+        {
+            "name": "Launch index.html",
+            "type": "firefox",
+            "request": "attach"
         }
     ]
 }

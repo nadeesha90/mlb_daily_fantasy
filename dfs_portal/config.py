@@ -64,7 +64,7 @@ class CeleryConfig(HardCoded):
 
 class Config(CeleryConfig):
     """Default Flask configuration inherited by all environments. Use this for development environments."""
-    DEBUG = True
+    #DEBUG = True
     TESTING = False
     SECRET_KEY = "i_don't_want_my_cookies_expiring_while_developing"
     MAIL_SERVER = 'smtp.localhost.test'
