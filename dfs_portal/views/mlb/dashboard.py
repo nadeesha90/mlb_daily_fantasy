@@ -4,8 +4,6 @@ import numpy as np
 import toolz
 from dateutil.parser import parse as parse_date
 
-
-
 import yaml
 from flask import redirect, render_template, url_for, request, jsonify, session
 from datatables import ColumnDT, DataTables
@@ -16,7 +14,7 @@ from dfs_portal.blueprints import mlb_dashboard
 from dfs_portal.core import flash
 from dfs_portal.extensions import redis, db
 from dfs_portal.models.mlb import *
-from dfs_portal.models.redis import T_SYNC_PLAYERS  
+from dfs_portal.models.redis import T_SYNC_PLAYERS 
 from dfs_portal.tasks.mlbgame import fetch_and_add_stat_lines_to_db
 from dfs_portal.tasks.train import fit_player_task, fit_all_task
 from dfs_portal.utils.htools import lmap, hredirect
@@ -118,7 +116,6 @@ def sync():
 
     # Schedule the task.
     task = fetch_and_add_stat_lines_to_db.delay(startDate, endDate)  # Schedule the task to execute ASAP.
-    session['messages'] = 'SHREK'
 
     # Attempt to obtain the results.
     for _ in range(int(WAIT_UP_TO / SLEEP_FOR)):
@@ -158,9 +155,17 @@ def sync():
 
 @mlb_dashboard.route('/train')
 def train():
-    return render_template('mlb_train.html',
+    models = Model.query\
+                    .with_entities(Model.nickname)\
+                    .all()
+    return render_template('mlb_train.html', models=models)
+
+@mlb_dashboard.route('/model')
+def model():
+    return render_template('mlb_model.html',
             predictors = enumerate(get_available_predictors()),
             transforms = enumerate(get_available_transforms()))
+
 
 @mlb_dashboard.route('/player_names/')
 def player_names():
@@ -178,16 +183,39 @@ def player_names():
     #playerNames.append({'value': 'All', 'category': '-', 'id': -1, 'startDate': None, 'endDate': None})
     return jsonify(playerNames)
 
-@mlb_dashboard.route('/predictor_names/')
-def predictor_names():
+@mlb_dashboard.route('/model_nicknames/')
+def model_nicknames():
     query = request.args.get('q')
     if not query:
         return jsonify({'message': 'No input data provided', 'data': {}}), 400
+    models = Model.query\
+                    .with_entities(Model.nickname)\
+                    .all()
+ 
+    modelNames = [{'value': modelTup[0]} for modelTup in models]
+    return jsonify(modelNames )
 
-    predsJsons = dict(items=[{'id': i, 'text':v} for i,v in enumerate(preds)])
-    return jsonify(predsJsons)
+@mlb_dashboard.route('/create_model', methods=['POST'])
+def create_model():
+    formData = request.form
+    if not formData:
+        return jsonify({'message': 'No input data provided',
+                        'data':formData }), 400
 
-
+    #Clean up the formData.
+    newFormData = parse_model_formdata(formData)
+    task = create_model_task.delay(newFormData)
+    result = wait_for_task(task, 0.5, SLEEP_FOR)
+    if result.status == cStatus.none:
+        return hredirect(url_for('.model'), 'Create model task scheduled', typ='info')
+    elif result.status == cStatus.success:
+        return hredirect(url_for('.model'), 'Create model task finished'.format(result.result.get('message')), typ='info')
+    else:
+        if result:
+            message = result.result.get('message')
+        else:
+            message = ''
+        return hredirect(url_for('.model'), 'Error: {}'.format(message), typ='danger')
 
 @mlb_dashboard.route('/fit', methods=['POST'])
 def fit():
@@ -197,7 +225,7 @@ def fit():
                         'data':formData }), 400
 
     #Clean up the formData.
-    newFormData = parse_formdata(formData)
+    newFormData = parse_player_formdata(formData)
     # Schedule the tasks
     if newFormData['train_select'] == 'all':
         task = fit_all_task.delay(newFormData)
@@ -210,10 +238,16 @@ def fit():
     else:
         task = fit_player_task.delay(newFormData)
         result = wait_for_task(task, WAIT_UP_TO, SLEEP_FOR)
-        if result.status == cStatus.success:
-            return hredirect(url_for('.train'), 'Training player task scheduled.', typ='info')
+        if result.status == cStatus.none:
+            return hredirect(url_for('.train'), 'Training player task scheduled', typ='info')
+        elif result.status == cStatus.success:
+            return hredirect(url_for('.train'), 'Training player task finished'.format(result.result.get('message')), typ='info')
         else:
-            return hredirect(url_for('.train'), 'Error: {}'.format(result.result.get('message')), typ='danger')
+            if result:
+                message = result.result.get('message')
+            else:
+                message = ''
+            return hredirect(url_for('.train'), 'Error: {}'.format(message), typ='danger')
 
 
 
@@ -234,7 +268,7 @@ def get_player_career_start_end(playerTup):
     endDateStr  = endDate.strftime('%d/%m/%Y')
     return startDateStr, endDateStr
 
-def parse_formdata(formData):
+def parse_player_formdata(formData):
     newFormData = {}
     #Extract lists from formdata
     for key, value in formData.items():
@@ -244,29 +278,25 @@ def parse_formdata(formData):
             newFormData[key] = lst
         else:
             newFormData[key] = value
-    newFormData['predictor_name'] = newFormData.pop('select_predictor')
-    newFormData['data_transforms'] = newFormData.pop('select_datatransforms')
-    newFormData['hypers'] = newFormData.pop('f_hypers')
-    newFormData['data_cols'] = newFormData.pop('f_datacols')
-
     newFormData = parse_date_range(newFormData)
-    newFormData['hypers'] = parse_yaml(newFormData['hypers'])
-    newFormData['data_cols'] = parse_yaml(newFormData['data_cols'])
-    newFormData['model'] = parse_modelData(newFormData)
-
     return newFormData
 
-def parse_modelData(formData):
+def parse_model_formdata(formData):
+    newFormData = {}
+    #Extract lists from formdata
+    for key, value in formData.items():
+        lst = formData.getlist(key)
+        # If its a list, add it as a list
+        if len(lst) >= 2:
+            newFormData[key] = lst
+        else:
+            newFormData[key] = value
     modelData = {
-            'hypers':formData.pop('hypers'),
-            'data_cols':formData.pop('data_cols'),
-            'predictor_name':formData.pop('predictor_name'),
-            'start_date':formData.pop('start_date'),
-            'end_date':formData.pop('end_date'),
-            'data_transforms':formData.pop('data_transforms')}
+        'predictor_name': newFormData['predictor_name'],
+        'hypers': parse_yaml(newFormData['hypers']),
+        'data_cols': parse_yaml(newFormData['data_cols']),
+    }
     return modelData
-
-
 
 def parse_yaml(yamlStr):
     parsedDict = toolz.pipe(yamlStr,

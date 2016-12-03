@@ -126,34 +126,12 @@
                                     </select>
                                 </div>
                             </div>
-
-                            <div class="form-group">
-                                <label class="control-label col-md-3 col-sm-3 col-xs-12">Transforms</label>
-                                <div class="col-md-9 col-sm-9 col-xs-12">
-                                    <select id="select_datatransforms" name="select_datatransforms" multiple="multiple" placeholder="Specify list of transforms...">
-                                    </select>
-                                </div>
-                            </div>
-
                             <div class="form-group" id="daterange_form">
                                 <label class="control-label col-md-3 col-sm-3 col-xs-12">Date range</label>
                                 <div class="col-md-9 col-sm-9 col-xs-12">
                                     <input type="text" style="width: 200px" name="daterange" id="daterange" class="form-control"/>
                                 </div>
                             </div>
-                            <div class="item form-group">
-                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="textarea">Hypers</label>
-                                <div class="col-md-6 col-sm-6 col-xs-12">
-                                    <textarea id="f_hypers_textarea" name="f_hypers" class="form-control col-md-7 col-xs-12"></textarea>
-                                </div>
-                            </div>
-                            <div class="item form-group">
-                                <label class="control-label col-md-3 col-sm-3 col-xs-12" for="textarea">Data Columns</label>
-                                <div class="col-md-6 col-sm-6 col-xs-12">
-                                    <textarea id="f_datacols_textarea" name="f_datacols" class="form-control col-md-7 col-xs-12"></textarea>
-                                </div>
-                            </div>
-
                             <div class="invalid-form-error-message"></div>
                             <div class="ln_solid"></div>
                             <div class="form-group">
@@ -286,43 +264,15 @@ $( function() {
         labelField: 'title',
         searchField: 'title',
         options: [
-        {% for id, predictor in predictors %}
-        { id:{{ id }}, title: '{{ predictor }}' },
+        {% for predictor in models %}
+        { title: '{{ model }}' },
         {% endfor %}
         ],
     });
 
-    var $select = $('#select_datatransforms').selectize({
-        maxItems: null,
-        valueField: 'title',
-        labelField: 'title',
-        searchField: 'title',
-        hideSelected: false, // from original null
-        duplicates: true, // from original false
-        options: [
-        {% for id, transform in transforms %}
-        { id:{{ id }}, title: '{{ transform }}' },
-        {% endfor %}
-        ],
-    });
 });
 </script>
 <!-- /Selectize -->
-<!-- /code mirror for yaml input -->
-<script>
-var hypersCodeMirror = CodeMirror.fromTextArea(document.getElementById("f_hypers_textarea"), {
-    lineNumbers: true,
-    styleActiveLine: true,
-    matchBrackets: true,
-    theme: 'base16-light',
-});
-var datacolsCodeMirror = CodeMirror.fromTextArea(document.getElementById("f_datacols_textarea"), {
-    lineNumbers: true,
-    styleActiveLine: true,
-    matchBrackets: true,
-    theme: 'base16-light',
-});
-</script>
 <!-- /code mirror for yaml input -->
 <script>
 $(document).ready(function() {

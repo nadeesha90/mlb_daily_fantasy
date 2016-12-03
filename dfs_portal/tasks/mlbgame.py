@@ -503,7 +503,6 @@ def fetch_and_add_stat_lines_to_db(startDate, endDate):
     endDate = parse_date(endDate)
     total = (endDate - startDate)
     total = total.days
-    redis.set(TOTAL_PROGRESS, total)
     lock = redis.lock(T_SYNC_PLAYERS, timeout=int(THROTTLE))
     have_lock = lock.acquire(blocking=False)
     if not have_lock:
@@ -527,7 +526,7 @@ def fetch_and_add_stat_lines_to_db(startDate, endDate):
     assert startDate < endDate, 'start_date should be before end_date!'
     for date in allDates:
         if date >= startDate.date() and date < endDate.date():
-            redis.incr(CURRENT_PROGRESS, amount=1)
+            #redis.incr(CURRENT_PROGRESS, amount=1)
             statuses = fetch_all_game_data(date) >> add_data_to_db
             errorFound = False
             if statuses:
