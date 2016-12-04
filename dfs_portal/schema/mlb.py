@@ -2,7 +2,7 @@ from marshmallow import Schema, fields, ValidationError, pre_load
 
 from dfs_portal.config import HardCoded
 from dfs_portal.utils import htools
-
+from celery.contrib import rdb
 
 # Custom validators
 def must_not_be_blank(data):
@@ -87,34 +87,57 @@ class PitcherStatLineSchema(Schema):
 
 
 class ModelSchema(Schema):
-    player = fields.Nested(PlayerSchema, validate=must_not_be_blank, only=['full_name', 'id'])
-    # hyper = fields.Nested(ModelHyperSchema, validate=must_not_be_blank, only=['id'])
-
-    # hypers = fields.List(required =True, cls_or_instance=fields.List(cls_or_instance=fields.Str))
-    # hypers = LDict(required=True)
-    hypers = fields.Method('dictify', required=True, deserialize='listify')
-    hypers_dict = fields.Method('dictify', deserialize='dictify', load_from='hypers')
-    data_cols = fields.Method('dictify', required=True, deserialize='listify')
-    data_cols_dict = fields.Method('dictify', deserialize='dictify', load_from='data_cols')
+    id = fields.Int(dump_only=True)
+    hypers = fields.Method('dictify_hypers', required=True, deserialize='listify')
+    hypers_dict = fields.Method('dictify_hypers', deserialize='dictify_hypers', load_from='hypers')
+    data_cols = fields.Method('dictify_data_cols', required=True, deserialize='listify')
+    data_cols_dict = fields.Method('dictify_data_cols', deserialize='dictify_data_cols', load_from='data_cols')
     predictor_name = fields.Str(required=True)
-    start_date = fields.DateTime(required=True)
-    end_date = fields.DateTime(required=True)
     data_transforms = fields.List(required=True, cls_or_instance=fields.Str)
+
+    nickname = fields.Str(required=True)
 
     def listify(self, value):
         return htools.listify(value)
 
-    def dictify(self, obj):
-        return obj
+    def dictify_hypers(self, obj):
+        hypers_dict = htools.dictify(obj.hypers)
+        return hypers_dict 
+    def dictify_data_cols(self, obj):
+        data_cols_dict = htools.dictify(obj.data_cols)
+        return data_cols_dict 
+        
+        
+
+class PlayerModelSchema(Schema):
+    player = fields.Nested(PlayerSchema, required=True, only=['id'])
+    model = fields.Nested(ModelSchema, required=True, only=['id'])
+    start_date = fields.DateTime(required=True)
+    end_date = fields.DateTime(required=True)
+
+
+class PredSchema(Schema):
+    playerModel = fields.Nested(PlayerModelSchema, required=True, only=['id'])
+    start_date = fields.DateTime(required=True)
+    end_date = fields.DateTime(required=True)
+    pred_col = fields.List(cls_or_instance=fields.Float)
 
 
 
-class ModelFitSchema(Schema):
-    model = fields.Nested('ModelSchema', required=True)
-    player_id = fields.Int(required=True)
-    player_type = fields.Str(required=True)
 
-class ModelPredictSchema(Schema):
+
+
+
+
+
+
+#class FitSchema(Schema):
+#    model = fields.Nested('ModelSchema', required=True)
+#    model = fields.Nested('ModelSchema', required=True)
+#    player_id = fields.Int(required=True)
+#    player_type = fields.Str(required=True)
+
+class PredictSchema(Schema):
     pred = fields.Nested('PredSchema', required=True)
     player_id = fields.Int(required=True)
     player_type = fields.Str(required=True)
@@ -125,11 +148,6 @@ class ModelPredictSchema(Schema):
 
 
 
-class PredSchema(Schema):
-    model = fields.Nested(ModelSchema, validate=must_not_be_blank, only=['id'])
-    start_date = fields.DateTime(required=True)
-    end_date = fields.DateTime(required=True)
-    pred_col = fields.List(cls_or_instance=fields.Float)
 
 
 
@@ -149,6 +167,7 @@ batter_stat_lines_schema = BatterStatLineSchema(many=True)
 pitcher_stat_line_schema = PitcherStatLineSchema()
 pitcher_stat_lines_schema = PitcherStatLineSchema(many=True)
 model_schema = ModelSchema()
-model_fitting_function_schema = ModelFitSchema()
-model_predict_function_schema = ModelPredictSchema()
+player_model_schema = PlayerModelSchema()
+#model_fitting_function_schema = FitSchema()
+model_predict_function_schema = PredictSchema()
 pred_schema = PredSchema()

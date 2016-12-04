@@ -3,6 +3,7 @@ import datetime
 import json
 import click
 import hashlib
+import numpy as np
 import pandas as pd
 import pudb
 import difflib
@@ -63,6 +64,9 @@ def listify (d):
     od = collections.OrderedDict(sorted(d.items(), key=lambda x: x))
     lst =  [[k,v] for k, v in od.items()]
     return lst
+@contract(l='list', returns='dict')
+def dictify (l):
+    return { k:v for k,v in l}
 
 @contract(d='dict', returns='dict')
 def order_dict (d):
@@ -278,9 +282,6 @@ def reset_to_start_of_week(date):
     day_of_week = date.weekday()
     beginning_of_week = date - datetime.timedelta(day_of_week)
     return beginning_of_week
-
-
-
 
 
 def wait_for_task(task, wait_up_to, sleep_for):

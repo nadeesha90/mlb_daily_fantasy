@@ -3,6 +3,9 @@
 # Lock
 T_SYNC_PLAYERS = 'dfs_portal:t_sync_players'
 
+
+T_CREATE_MODEL = 'dfs_portal:t_create_model' # Lock.
+
 T_FIT_ALL = 'dfs_portal:t_fit_all'  # Lock.
 T_FIT_ID = 'dfs_portal:t_fit_id_{}'
 

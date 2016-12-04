@@ -126,23 +126,37 @@ class PitcherStatLine(Base):
     salary = Column(Integer)
 
 class Model(Base):
+    '''
+    Model table that stores instructions/parameters
+    defining a unique machine learning predictor.
+    '''
     __tablename__ = 'model'
     id = Column(Integer, primary_key=True)
-    # players = association_proxy('player_models', 'player')
-    player_id = Column(Integer, ForeignKey('player.id'))
-    player = relationship('Player', backref='models')
-    modelObj = Column(PickleType)
-    #name = Column(String(80), unique=True)
     predictor_name = Column(String(80))
-
-    start_date = Column(DateTime)
-    end_date = Column(DateTime)
 
     hypers = Column(PickleType)
     data_transforms = Column(PickleType)
     data_cols = Column(PickleType)
 
-    # hyper_id   = Column(Integer, ForeignKey('modelhyper.id'))
+    nickname = Column(String(80), unique=True)
+
+
+class PlayerModel(Base):
+    '''
+    PlayerModel table that stores the concrete
+    sklearn predictor object, along with the information 
+    about the unique player whose data the predictor was trained on.
+    '''
+    __tablename__ = 'playermodel'
+    id = Column(Integer, primary_key=True)
+    player_id = Column(Integer, ForeignKey('player.id'))
+    player = relationship('Player', backref='playermodels')
+    predictorObj = Column(PickleType)
+    model_id = Column(Integer, ForeignKey('model.id'))
+    model = relationship('Model', backref='playermodels')
+    
+    start_date = Column(DateTime)
+    end_date = Column(DateTime)
 
 
 class Pred(Base):

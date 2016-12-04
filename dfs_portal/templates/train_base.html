@@ -122,7 +122,7 @@
                             <div class="form-group">
                                 <label for="select_predictor" class="control-label col-md-3 col-sm-3 col-xs-12">Predictor</label>
                                 <div class="col-md-9 col-sm-9 col-xs-12">
-                                    <select id="select_predictor" name="select_predictor" required="" placeholder="Specify predictor..." data-parsley-validate-if-empty="true"/>
+                                    <select id="select_predictor" name="model_nickname" required="" placeholder="Specify predictor..." data-parsley-validate-if-empty="true"/>
                                     </select>
                                 </div>
                             </div>
@@ -264,7 +264,7 @@ $( function() {
         labelField: 'title',
         searchField: 'title',
         options: [
-        {% for predictor in models %}
+        {% for model in models %}
         { title: '{{ model }}' },
         {% endfor %}
         ],

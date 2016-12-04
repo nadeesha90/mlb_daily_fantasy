@@ -16,7 +16,7 @@ from dfs_portal.extensions import redis, db
 from dfs_portal.models.mlb import *
 from dfs_portal.models.redis import T_SYNC_PLAYERS 
 from dfs_portal.tasks.mlbgame import fetch_and_add_stat_lines_to_db
-from dfs_portal.tasks.train import fit_player_task, fit_all_task
+from dfs_portal.tasks.train import create_model_task, fit_player_task, fit_all_task
 from dfs_portal.utils.htools import lmap, hredirect
 from dfs_portal.utils.ctools import wait_for_task, cResult, cStatus
 from dfs_portal.core.abstract_predictor import get_available_predictors
@@ -158,6 +158,7 @@ def train():
     models = Model.query\
                     .with_entities(Model.nickname)\
                     .all()
+    models = [ m[0] for m in models ]
     return render_template('mlb_train.html', models=models)
 
 @mlb_dashboard.route('/model')
