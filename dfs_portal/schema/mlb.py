@@ -112,15 +112,19 @@ class ModelSchema(Schema):
 class PlayerModelSchema(Schema):
     player = fields.Nested(PlayerSchema, required=True, only=['id'])
     model = fields.Nested(ModelSchema, required=True, only=['id'])
+    #player = fields.Nested(PlayerSchema, validate=must_not_be_blank, only=['id'])
+    #model = fields.Nested(ModelSchema, validate=must_not_be_blank, only=['id'])
     start_date = fields.DateTime(required=True)
     end_date = fields.DateTime(required=True)
 
 
 class PredSchema(Schema):
-    playerModel = fields.Nested(PlayerModelSchema, required=True, only=['id'])
-    start_date = fields.DateTime(required=True)
-    end_date = fields.DateTime(required=True)
+    player_model = fields.Nested(PlayerModelSchema, required=True, only=['id'])
+    #start_date = fields.DateTime(required=True)
+    #end_date = fields.DateTime(required=True)
     pred_col = fields.List(cls_or_instance=fields.Float)
+    frequency = fields.Int(required=True)
+    #pred_col = fields.List(cls_or_instance=fields.Float)
 
 
 
@@ -137,12 +141,12 @@ class PredSchema(Schema):
 #    player_id = fields.Int(required=True)
 #    player_type = fields.Str(required=True)
 
-class PredictSchema(Schema):
-    pred = fields.Nested('PredSchema', required=True)
-    player_id = fields.Int(required=True)
-    player_type = fields.Str(required=True)
-    pred_start_date = fields.DateTime(required=True)
-    pred_end_date = fields.DateTime(required=True)
+#class PredictSchema(Schema):
+#    pred = fields.Nested('PredSchema', required=True)
+#    player_id = fields.Int(required=True)
+#    player_type = fields.Str(required=True)
+#    pred_start_date = fields.DateTime(required=True)
+#    pred_end_date = fields.DateTime(required=True)
 
 
 
@@ -169,5 +173,5 @@ pitcher_stat_lines_schema = PitcherStatLineSchema(many=True)
 model_schema = ModelSchema()
 player_model_schema = PlayerModelSchema()
 #model_fitting_function_schema = FitSchema()
-model_predict_function_schema = PredictSchema()
+#model_predict_function_schema = PredictSchema()
 pred_schema = PredSchema()

@@ -29,6 +29,8 @@ from monad.actions import tryout
 from dfs_portal.utils.htools import hprogress, flatten, merge_fuzzy, cached_read_html_page, hjrequest, d2nt, isempty, dget, lmap, reset_to_start_of_week
 
 
+
+
 import pudb
 import pickle
 
@@ -44,13 +46,13 @@ from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 from dfs_portal.extensions import celery, db, redis
 from dfs_portal.utils.ctools import wait_for_task, cResult, cStatus
 from dfs_portal.models.mlb import PlayerModel, Model, Player, BatterStatLine, PitcherStatLine, Game, Pred
-from dfs_portal.schema.mlb import player_model_schema, model_schema
+from dfs_portal.schema.mlb import player_model_schema, model_schema, pred_schema
 from dfs_portal.models.redis import T_CREATE_MODEL, T_FIT_ALL, T_FIT_ID, T_PREDICT_ALL, T_PREDICT_ID
 
 from dfs_portal.config import HardCoded
 
 from dfs_portal.core import abstract_predictor as abs_p
-from dfs_portal.core.dbutils import get_player_career_start_end
+from dfs_portal.core.dbutils import get_player_career_start_end, retrain_start_end_cycles, query_player_stat_line
 
 from dfs_portal.core import transforms
 
@@ -65,6 +67,8 @@ WAIT_UP_TO = 2  # Wait up to these many seconds for task to finish. Won't block 
 ######################################
 ##### Database related functions #####
 ######################################
+# Moved them all to dbutils.py
+# So we only have tasks here.
 def apply_transforms(df, parameters):
     transformFuncs = parameters.data_transforms
     transformFuncs = [eval('transforms.' + func) for func in transformFuncs]
@@ -72,24 +76,8 @@ def apply_transforms(df, parameters):
     df = pipe (df, *transformFuncs)
     return df
 
-def query_player_stat_line(playerTup):
-    #playerTup = (playerId, playerType, startDate, endDate)
-    playerId, playerType, startDate, endDate = playerTup 
-    if playerType == 'batter':
-        query = BatterStatLine.query\
-                .join(Game)\
-                .filter(BatterStatLine.player_id == playerId)\
-                .filter(
-                        Game.date >= startDate,
-                        Game.date < endDate)
-    else:
-        query = PitcherStatLine.query\
-                .join(Game)\
-                .filter(PitcherStatLine.player_id == playerId)\
-                .filter(
-                        Game.date >= startDate,
-                        Game.date < endDate)
-    return query
+
+
 
 
 
@@ -170,7 +158,8 @@ def fit_all_task(formData):
 #@single_instance
 def fit_player_task(formData):
     '''
-    Takes model ref, player, and dates and fits that player to the specifications. 
+    Takes model ref, player, and dates and fits that player to the specifications.
+    Can be called directly, or from fit_all_task()
     '''
     lockName = T_FIT_ID.format(formData['player_id'])
     lock = redis.lock(lockName, timeout=int(THROTTLE))
@@ -190,49 +179,61 @@ def fit_player_task(formData):
         model = Model.query.filter(Model.nickname == formData['model_nickname']).one()
     except NoResultFound:
         return cResult(result=dict(message='No model found with the given nickname.', data=None), status=cStatus.fail)
-    
     modelData, errors = model_schema.dump(model)
     
-    try:
-        playerModel = PlayerModel.query \
-                .filter(PlayerModel.player_id == player.id)\
-                .filter(PlayerModel.model_id == model.id)\
-                .filter(PlayerModel.start_date == formData['start_date'])\
-                .filter(PlayerModel.end_date == formData['end_date'])\
-                .one()
-        LOG.info('Using existing model.')
+    # TODO: delete these once Hassan integrates front-end
+    formData['frequency'] = 7
+    formData['cycle'] = True 
+    allEndDates = [ formData['end_date'] ]
+    if formData['cycle']:
+        formData['start_date'], formData['end_date'] = get_player_career_start_end(player.player_type, player.id)
+        allEndDates = retrain_start_end_cycles(formData['start_date'], formData['end_date'], formData['frequency'])
+    
+    for date in allEndDates:
+        formData['end_date'] = date
+        try:
+            playerModel = PlayerModel.query \
+                    .filter(PlayerModel.player_id == player.id)\
+                    .filter(PlayerModel.model_id == model.id)\
+                    .filter(PlayerModel.start_date == formData['start_date'])\
+                    .filter(PlayerModel.end_date == formData['end_date'])\
+                    .one()
+            LOG.info('Using existing model.')
 
-    except NoResultFound:
-        LOG.warning('No model found, creating one.')
+        except NoResultFound:
+            LOG.warning('No model found, creating one.')
 
-        predictorObj = abs_p.get_predictor_obj(modelData['predictor_name'], hypers=modelData['hypers'])
-        query = query_player_stat_line((player.id, formData['player_type'], formData['start_date'], formData['end_date']))
-        df = pd.read_sql(query.statement, query.session.bind)
+            predictorObj = abs_p.get_predictor_obj(modelData['predictor_name'], hypers=modelData['hypers'])
+            query = query_player_stat_line((player.id, formData['player_type'], formData['start_date'], formData['end_date']))
+            df = pd.read_sql(query.statement, query.session.bind)
 
-        df = apply_transforms(df, d2nt(modelData))
-        fitSuccess = predictorObj.fit(df, modelData['data_cols']['features'], modelData['data_cols']['target_col'], validationSplit=modelData['hypers']['validation_split'])
-        
-        # storing listified versions back into model object before submitting to db
-        #modelData['hypers'] = hypersList
-        #modelData['data_cols'] = data_colsList
-        if fitSuccess:
-            playerModelData = {'player': {'id': player.id},
-                    'model': {'id': model.id},
-                    'start_date': formData['start_date'],
-                    'end_date': formData['end_date']}
-            playerModelData, errors = player_model_schema.load(playerModelData)
-            if errors:
-                return cResult(result=dict(message=errors, data=playerModelData), status=cStatus.fail)
-            playerModelData['predictorObj'] = predictorObj 
-            playerModelData['model'] = model 
-            playerModelData['player'] = player 
-            playerModel = PlayerModel(**playerModelData)
-            db.session.add(playerModel)
-            db.session.commit()
+            df = apply_transforms(df, d2nt(modelData))
+            fitSuccess = predictorObj.fit(df, modelData['data_cols']['features'], modelData['data_cols']['target_col'], validationSplit=modelData['hypers']['validation_split'])
 
-    except MultipleResultsFound:
-        return cResult(result=dict(message='Found duplicate Models in the database.', data=None), status=cStatus.fail)
 
+            if fitSuccess:
+                playerModelData = {'player': {'id': player.id},
+                        'model': {'id': model.id},
+                        'start_date': formData['start_date'].strftime('%d/%m/%Y'),
+                        'end_date': formData['end_date'].strftime('%d/%m/%Y')}
+                rdb.set_trace()
+                playerModelData, errors = player_model_schema.load(playerModelData)
+                # TODO: playerModelData does not store player.id, model.id for some reason.
+                # this is causing the predict to fail because it can't find the player model!!!!
+                if errors:
+                    return cResult(result=dict(message=errors, data=playerModelData), status=cStatus.fail)
+                playerModelData['predictorObj'] = predictorObj 
+                playerModelData['model'] = model 
+                playerModelData['player'] = player 
+                playerModel = PlayerModel(**playerModelData)
+                db.session.add(playerModel)
+                db.session.commit()
+
+        except MultipleResultsFound:
+            return cResult(result=dict(message='Found duplicate Models in the database.', data=None), status=cStatus.fail)
+
+    #tas = predict_player_task.delay(formData)
+    #res = wait_for_task(tas, WAIT_UP_TO, SLEEP_FOR)
     return cResult(result='fitp', status=cStatus.success)
 
 
@@ -245,9 +246,38 @@ def fit_player_task(formData):
 
 
 
+@celery.task(bind=False, soft_time_limit=120 *60)
+#@single_instance
+def predict_all_task(formData):
+    '''
+    Takes model ref and dates and predicts all players to the specifications.
+    '''
+    lock = redis.lock(T_PREDICT_ALL, timeout=int(THROTTLE))
+    have_lock = lock.acquire(blocking=False)
+    if not have_lock:
+        LOG.warning('{} lock currently active.'.format(T_PREDICT_ALL))
+        return cResult(result=None, status=cStatus.locked)
+
+
+    allPlayers = Player.query\
+            .with_entities(Player.id)\
+            .filter(Player.player_type == formData['player_type'])\
+            .all()
+    allForms = []
+    for player in allPlayers:
+        tempDict = deepcopy(formData)
+        tempDict.update(player_id = player[0])
+        allForms.append(tempDict)
+    predict_all_players = group(predict_player_task.s(form) for form in allForms)
+    tasks = predict_all_players.apply_async()
+    results = wait_for_task(tasks, WAIT_UP_TO, SLEEP_FOR)
+    return results
+
+
 @celery.task(bind=False, soft_time_limit=120 * 60)
 #@single_instance
 def predict_player_task(formData):
+    #rdb.set_trace()
     
     lockName = T_PREDICT_ID.format(formData['player_id'])
     lock = redis.lock(lockName, timeout=int(THROTTLE))
@@ -256,10 +286,10 @@ def predict_player_task(formData):
         LOG.warning('{} lock currently active.'.format(lockName))
         return cResult(result=dict(message='Celery task is locked.', data=None), status=cStatus.locked)
     
-    formData, errors = model_predict_function_schema.load(formData)
-    if errors:
-        return cResult(result=dict(message=errors, data=formData), status=cStatus.fail)
-
+    #formData, errors = pred_schema.load(formData)
+    #if errors:
+    #    return cResult(result=dict(message=errors, data=formData), status=cStatus.fail)
+    
     try:
         player = Player.query.get(formData['player_id'])
     except IntegrityError:
@@ -268,42 +298,83 @@ def predict_player_task(formData):
         return cResult(result=dict(message='No player found with given id', data=None), status=cStatus.fail)
 
     try:
-        model = Model.query.get(formData['nickname'])
-    except IntegrityError:
-        return cResult(result=dict(message='Model could not be found.', data=None), status=cStatus.fail)
-    if model is None:
-        return cResult(result=dict(message='No model found with given nickname', data=None), status=cStatus.fail)
-    modelData = model_schema.dump(model)
-    
-    try:
-        playerModel = PlayerModel.query \
-                .filter(PlayerModel.player_id == player.id)\
-                .filter(PlayerModel.model_id == model.id)\
-                .one()
-        LOG.info('Using existing model.')
-        # need to store listified versions of dicts in db, but want to use dicts in logic
-        # storing lists in temporary variables, will refill after logic and before storing in db
-        hypersList = modelData['hypers']
-        data_colsList = modelData['data_cols']
-        
-        modelData['hypers'] = modelData.pop('hypers_dict')
-        modelData['data_cols'] = modelData.pop('data_cols_dict')
-
-        modelObj = abs_p.get_predictor_obj(modelData['predictor_name'], hypers=modelData['hypers'])
-        query = query_player_stat_line((player.id, formData['player_type'], modelData['pred_start_date'], modelData['pred_end_date']))
-        df = pd.read_sql(query.statement, query.session.bind)
-
-        df = apply_transforms(df, d2nt(modelData))
-        predCol = modelObj.predict(df, modelData['data_cols']['features'], modelData['data_cols']['target_col'])
-        
-        rdb.set_trace()
-        pred = Pred(**modelData)
-        db.session.commit()
-
+        model = Model.query.filter(Model.nickname == formData['model_nickname']).one()
     except NoResultFound:
-        return cResult(result=dict(message='Did not find the Model in the database.', data=None), status=cStatus.fail)
-    except MultipleResultsFound:
-        return cResult(result=dict(message='Found duplicate Models in the database.', data=None), status=cStatus.fail)
+        return cResult(result=dict(message='No model found with the given nickname.', data=None), status=cStatus.fail)
+    modelData, errors = model_schema.dump(model)
+
+    startDate, endDate = get_player_career_start_end(player.player_type, player.id)
+    allEndDates = retrain_start_end_cycles(startDate, endDate, formData['frequency'])
+    formData['start_date'] = startDate
+    
+    for date in allEndDates:
+        formData['end_date'] = date
+        try:
+            playerModel = PlayerModel.query \
+                    .filter(PlayerModel.player_id == player.id)\
+                    .filter(PlayerModel.model_id == model.id)\
+                    .filter(PlayerModel.start_date == formData['start_date'])\
+                    .filter(PlayerModel.end_date == formData['end_date'])\
+                    .one()
+            LOG.info('Using existing model.')
+
+            # will run predict here.
+            query = query_player_stat_line((player.id, player.player_type, formData['start_date'], formData['end_date']))
+            df = pd.read_sql(query.statement, query.session.bind)
+
+            df = apply_transforms(df, d2nt(modelData))
+            yPred = playerModel.predictorObj.predict(df, modelData['data_cols']['features'], modelData['data_cols']['target_col'])
+
+            if yPred:
+                # first check if the pred row exists
+                # then append to it if it exists, otherwise create a new one
+                try:
+                    pred = Pred.query \
+                            .filter(Pred.player_model_id == playerModel.id)\
+                            .one()
+                    LOG.info('Appending to existing pred row.')
+                    pred.pred_col = pred.pred_col.append(yPred, ignore_index=True)
+                    # TODO: add a date column to the prediction and sort the values by date
+                    db.session.commit()
+
+
+
+                except NoResultFound:
+                    predData = {'player_model': {'id': playerModel.id},
+                            'frequency': formData['frequency'],
+                            'pred_col': yPred}
+                    predData, errors = pred_schema.load(predData)
+                    if errors:
+                        return cResult(result=dict(message=errors, data=playerModelData), status=cStatus.fail)
+                    predData['player_model'] = playerModel
+                    pred = Pred(**predData)
+                    db.session.add(pred)
+                    db.session.commit()
+
+                except MultipleResultsFound:
+                    return cResult(result=dict(message='Found duplicate Preds in the database.', data=None), status=cStatus.fail)
+
+
+
+        except NoResultFound:
+            LOG.warning('No model found.')
+            return cResult(result=dict(message='No Model found in database.', data=None), status=cStatus.fail)
+
+        except MultipleResultsFound:
+            return cResult(result=dict(message='Found duplicate Models in the database.', data=None), status=cStatus.fail)
+
     return cResult(result='predp', status=cStatus.success)
+
+    
+    #allForms = []
+    #for date in allEndDates:
+    #    tempDict = deepcopy(formData)
+    #    tempDict['start_date'] = startDate
+    #    tempDict['end_date'] = endDate
+    #    allForms.append(tempDict)
+    #predict_all_retrains = group(predict_player_start_end_task.s(form) for form in allForms)
+    #tasks = predict_all_retrains.apply_async()
+    #results = wait_for_task(tasks, WAIT_UP_TO, SLEEP_FOR)
+    #return results
 
 

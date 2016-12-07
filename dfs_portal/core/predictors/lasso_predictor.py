@@ -71,7 +71,7 @@ class LassoPredictor (Persistent):
         return success
 
     def predict (self, df, features, targetCol):
-        XPred = df2xy(df, features, targetCol)[0]
+        XPred,_ = df2xy(df, features, targetCol)
         yPred = self.model.predict(XPred)
         #df['pred' + targetCol] = yPred
         return yPred
