@@ -182,12 +182,11 @@ def fit_player_task(formData):
     modelData, errors = model_schema.dump(model)
     
     # TODO: delete these once Hassan integrates front-end
-    formData['frequency'] = 7
-    formData['cycle'] = True 
-    allEndDates = [ formData['end_date'] ]
-    if formData['cycle']:
+    if formData['train_frequency'] > 0:
         formData['start_date'], formData['end_date'] = get_player_career_start_end(player.player_type, player.id)
-        allEndDates = retrain_start_end_cycles(formData['start_date'], formData['end_date'], formData['frequency'])
+        allEndDates = retrain_start_end_cycles(formData['start_date'], formData['end_date'], formData['train_frequency'])
+    else:
+        allEndDates = [ formData['end_date'] ]
     
     for date in allEndDates:
         formData['end_date'] = date
@@ -200,7 +199,6 @@ def fit_player_task(formData):
                     .filter(PlayerModel.end_date == formData['end_date'].replace(hour=0, minute=0))\
                     .one()
             LOG.info('Using existing model.')
-            print ('Using existing model.')
 
         except NoResultFound:
             LOG.warning('No model found, creating one.')
@@ -234,7 +232,7 @@ def fit_player_task(formData):
         except MultipleResultsFound:
             return cResult(result=dict(message='Found duplicate Models in the database.', data=None), status=cStatus.fail)
 
-    tas = predict_player_task.delay(formData)
+    #tas = predict_player_task.delay(formData)
     #res = wait_for_task(tas, WAIT_UP_TO, SLEEP_FOR)
     return cResult(result='fitp', status=cStatus.success)
 
@@ -304,7 +302,7 @@ def predict_player_task(formData):
     modelData, errors = model_schema.dump(model)
 
     startDate, endDate = get_player_career_start_end(player.player_type, player.id)
-    allEndDates = retrain_start_end_cycles(startDate, endDate, formData['frequency'])
+    allEndDates = retrain_start_end_cycles(startDate, endDate, formData['train_frequency'])
     formData['start_date'] = startDate
     
     for date in allEndDates:
@@ -320,7 +318,7 @@ def predict_player_task(formData):
 
             # will run predict here.
             query = query_player_stat_line((player.id, player.player_type, formData['start_date'], formData['end_date']))
-            rdb.set_trace()
+            #rdb.set_trace()
             df = player_stat_line_query2df(query)
             gameDates = df.date
             #df = pd.read_sql(query.statement, query.session.bind)
@@ -349,7 +347,7 @@ def predict_player_task(formData):
 
             except NoResultFound:
                 predData = {'player_model': {'id': playerModel.id},
-                        'frequency': formData['frequency'],
+                        'frequency': formData['train_frequency'],
                         'pred_col': yPred}
                 predData, errors = pred_schema.load(predData)
                 if errors:
