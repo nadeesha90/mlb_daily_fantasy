@@ -122,7 +122,7 @@ class PredSchema(Schema):
     player_model = fields.Nested(PlayerModelSchema, required=True, only=['id'])
     #start_date = fields.DateTime(required=True)
     #end_date = fields.DateTime(required=True)
-    pred_col = fields.List(cls_or_instance=fields.Float)
+    #pred_col = fields.List(cls_or_instance=fields.Float)
     frequency = fields.Int(required=True)
     #pred_col = fields.List(cls_or_instance=fields.Float)
 

@@ -1,13 +1,10 @@
-
+nickname: 'lasso_test'
 verbose: True
+data_transforms: [shift, ewma]
 ewma_enabled: False 
 days_to_average: 10
 shift_by_days: 1
 validation_split: 0.2
-
-
-
-
 
 
 features:

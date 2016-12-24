@@ -26,7 +26,7 @@ from monad.types.maybe import Nothing, Just
 from monad.actions import tryout
 #from maybe import *
 
-from dfs_portal.utils.htools import hprogress, flatten, merge_fuzzy, cached_read_html_page, hjrequest, d2nt, isempty, dget, lmap, reset_to_start_of_week
+from dfs_portal.utils.htools import hprogress, flatten, merge_fuzzy, cached_read_html_page, hjrequest, d2nt, isempty, dget, lmap, reset_to_start_of_week 
 
 
 
@@ -52,7 +52,7 @@ from dfs_portal.models.redis import T_CREATE_MODEL, T_FIT_ALL, T_FIT_ID, T_PREDI
 from dfs_portal.config import HardCoded
 
 from dfs_portal.core import abstract_predictor as abs_p
-from dfs_portal.core.dbutils import get_player_career_start_end, retrain_start_end_cycles, query_player_stat_line
+from dfs_portal.core.dbutils import get_player_career_start_end, retrain_start_end_cycles, query_player_stat_line, player_stat_line_query2df
 
 from dfs_portal.core import transforms
 
@@ -192,13 +192,15 @@ def fit_player_task(formData):
     for date in allEndDates:
         formData['end_date'] = date
         try:
+            #rdb.set_trace()
             playerModel = PlayerModel.query \
                     .filter(PlayerModel.player_id == player.id)\
                     .filter(PlayerModel.model_id == model.id)\
-                    .filter(PlayerModel.start_date == formData['start_date'])\
-                    .filter(PlayerModel.end_date == formData['end_date'])\
+                    .filter(PlayerModel.start_date == formData['start_date'].replace(hour=0, minute=0))\
+                    .filter(PlayerModel.end_date == formData['end_date'].replace(hour=0, minute=0))\
                     .one()
             LOG.info('Using existing model.')
+            print ('Using existing model.')
 
         except NoResultFound:
             LOG.warning('No model found, creating one.')
@@ -212,27 +214,27 @@ def fit_player_task(formData):
 
 
             if fitSuccess:
+                #rdb.set_trace()
                 playerModelData = {'player': {'id': player.id},
                         'model': {'id': model.id},
-                        'start_date': formData['start_date'].strftime('%d/%m/%Y'),
-                        'end_date': formData['end_date'].strftime('%d/%m/%Y')}
-                rdb.set_trace()
+                        'start_date': formData['start_date'].strftime('%m/%d/%Y'),
+                        'end_date': formData['end_date'].strftime('%m/%d/%Y')}
                 playerModelData, errors = player_model_schema.load(playerModelData)
-                # TODO: playerModelData does not store player.id, model.id for some reason.
-                # this is causing the predict to fail because it can't find the player model!!!!
                 if errors:
                     return cResult(result=dict(message=errors, data=playerModelData), status=cStatus.fail)
                 playerModelData['predictorObj'] = predictorObj 
                 playerModelData['model'] = model 
-                playerModelData['player'] = player 
+                playerModelData['player'] = player
                 playerModel = PlayerModel(**playerModelData)
                 db.session.add(playerModel)
                 db.session.commit()
 
+
+
         except MultipleResultsFound:
             return cResult(result=dict(message='Found duplicate Models in the database.', data=None), status=cStatus.fail)
 
-    #tas = predict_player_task.delay(formData)
+    tas = predict_player_task.delay(formData)
     #res = wait_for_task(tas, WAIT_UP_TO, SLEEP_FOR)
     return cResult(result='fitp', status=cStatus.success)
 
@@ -277,8 +279,6 @@ def predict_all_task(formData):
 @celery.task(bind=False, soft_time_limit=120 * 60)
 #@single_instance
 def predict_player_task(formData):
-    #rdb.set_trace()
-    
     lockName = T_PREDICT_ID.format(formData['player_id'])
     lock = redis.lock(lockName, timeout=int(THROTTLE))
     have_lock = lock.acquire(blocking=False)
@@ -313,46 +313,54 @@ def predict_player_task(formData):
             playerModel = PlayerModel.query \
                     .filter(PlayerModel.player_id == player.id)\
                     .filter(PlayerModel.model_id == model.id)\
-                    .filter(PlayerModel.start_date == formData['start_date'])\
-                    .filter(PlayerModel.end_date == formData['end_date'])\
+                    .filter(PlayerModel.start_date == formData['start_date'].replace(hour=0, minute=0))\
+                    .filter(PlayerModel.end_date == formData['end_date'].replace(hour=0, minute=0))\
                     .one()
             LOG.info('Using existing model.')
 
             # will run predict here.
             query = query_player_stat_line((player.id, player.player_type, formData['start_date'], formData['end_date']))
-            df = pd.read_sql(query.statement, query.session.bind)
-
+            rdb.set_trace()
+            df = player_stat_line_query2df(query)
+            gameDates = df.date
+            #df = pd.read_sql(query.statement, query.session.bind)
             df = apply_transforms(df, d2nt(modelData))
-            yPred = playerModel.predictorObj.predict(df, modelData['data_cols']['features'], modelData['data_cols']['target_col'])
+            predScores = playerModel.predictorObj.predict(df, modelData['data_cols']['features'], modelData['data_cols']['target_col'])
+            yPred = pd.DataFrame({'date':gameDates[1:], 'pred':predScores})
+            # TODO: the problem with yPred is that it should have the exact
+            # same datetime dates as as from the statline data. However, the 
+            # statline does not have the dates. Solution should be to use 
+            # pd.read_sql to get the dates in your dataframe as a column, then
+            # remove the dates for model fitting, or predicting, etc. and
+            # reattach afterwards.
+            
+            # first check if the pred row exists
+            # then append to it if it exists, otherwise create a new one
+            try:
+                pred = Pred.query \
+                        .filter(Pred.player_model_id == playerModel.id)\
+                        .one()
+                LOG.info('Appending to existing pred df.')
+                pred.pred_col = pred.pred_col.append(yPred, ignore_index=True)
+                # TODO: add a date column to the prediction and sort the values by date
+                db.session.commit()
 
-            if yPred:
-                # first check if the pred row exists
-                # then append to it if it exists, otherwise create a new one
-                try:
-                    pred = Pred.query \
-                            .filter(Pred.player_model_id == playerModel.id)\
-                            .one()
-                    LOG.info('Appending to existing pred row.')
-                    pred.pred_col = pred.pred_col.append(yPred, ignore_index=True)
-                    # TODO: add a date column to the prediction and sort the values by date
-                    db.session.commit()
 
 
+            except NoResultFound:
+                predData = {'player_model': {'id': playerModel.id},
+                        'frequency': formData['frequency'],
+                        'pred_col': yPred}
+                predData, errors = pred_schema.load(predData)
+                if errors:
+                    return cResult(result=dict(message=errors, data=playerModelData), status=cStatus.fail)
+                predData['player_model'] = playerModel
+                pred = Pred(**predData)
+                db.session.add(pred)
+                db.session.commit()
 
-                except NoResultFound:
-                    predData = {'player_model': {'id': playerModel.id},
-                            'frequency': formData['frequency'],
-                            'pred_col': yPred}
-                    predData, errors = pred_schema.load(predData)
-                    if errors:
-                        return cResult(result=dict(message=errors, data=playerModelData), status=cStatus.fail)
-                    predData['player_model'] = playerModel
-                    pred = Pred(**predData)
-                    db.session.add(pred)
-                    db.session.commit()
-
-                except MultipleResultsFound:
-                    return cResult(result=dict(message='Found duplicate Preds in the database.', data=None), status=cStatus.fail)
+            except MultipleResultsFound:
+                return cResult(result=dict(message='Found duplicate Preds in the database.', data=None), status=cStatus.fail)
 
 
 
