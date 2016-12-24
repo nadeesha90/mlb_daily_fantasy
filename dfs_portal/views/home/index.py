@@ -13,14 +13,7 @@ from celery.backends.database.models import *
 from celery.backends.database import session
 @home_index.route('/')
 def index():
-
-    # Get all tasks from DB
-    i = inspect()
-
-    tsk = long_task.delay()
-    #pu.db
-    allTasks = i.registered_tasks()
-    return render_template('home_index.html', tasks=['hello', 'buddy'])
+    return render_template('home_index.html')
 
 @home_index.route('task_table')
 def task_table():
