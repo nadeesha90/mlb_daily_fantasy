@@ -38,7 +38,8 @@ from flask.ext.celery import single_instance
 from dfs_portal.extensions import celery, db, redis
 from dfs_portal.models.mlb import *
 from dfs_portal.schema.mlb import *
-from dfs_portal.models.redis import T_SYNC_PLAYERS 
+from dfs_portal.models.redis import T_SYNC_PLAYERS
+from dfs_portal.utils.ctools import wait_for_task, cResult, cStatus
 
 from dfs_portal.config import HardCoded
 
@@ -496,9 +497,7 @@ def fetch_all_game_data(date):
 
 
 @celery.task(bind=True, soft_time_limit=120 * 60)
-@single_instance
-def fetch_and_add_stat_lines_to_db(startDate, endDate):
-
+def fetch_and_add_stat_lines_to_db(self, startDate, endDate):
     startDate = parse_date(startDate)
     endDate = parse_date(endDate)
     total = (endDate - startDate)
@@ -524,25 +523,31 @@ def fetch_and_add_stat_lines_to_db(startDate, endDate):
                      list,
                      sorted)
     assert startDate < endDate, 'start_date should be before end_date!'
+    i = 0
+    allErrors = []
     for date in allDates:
         if date >= startDate.date() and date < endDate.date():
+            i = i + 1
             #redis.incr(CURRENT_PROGRESS, amount=1)
+            self.update_state(state='PROGRESS', meta={'current': i, 'total': len(allDates), 'name': 'fetch_and_add_stat_lines_to_db'})
             statuses = fetch_all_game_data(date) >> add_data_to_db
             errorFound = False
+
             if statuses:
                 for message, data, status in statuses:
                     if status != 200:
                         if status != 423:
                             errorFound = True
-                        print ('Incorrect data caused db failure with error code:', status)
+                        print ('', status)
                         print ('Message: ')
                         pprint(message)
                         print ('Data: ')
                         pprint(data)
+                        allErrors.append((message,data))
 
             if errorFound:
-                print ('Errors found when insert data in db. Exiting...')
-                sys.exit(1)
+                return cResult(result=dict(message='Errors found when insert data in db.', data=allErrors), status=cStatus.fail)
 
+    return cResult(result=dict(message='Synced all data.', data=None), status=cStatus.success)
 # fetch_and_add_stat_lines_to_db(startDate, endDate)
 

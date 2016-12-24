@@ -35,5 +35,4 @@ def wait_for_task(task, wait_up_to, sleep_for):
             return cResult(result=None, status=cStatus.fail)
 
         return result
-
     return cResult(result=None, status=cStatus.none)
