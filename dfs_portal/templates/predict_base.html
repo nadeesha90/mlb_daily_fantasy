@@ -77,21 +77,21 @@
             <div class="col-md-12 col-sm-12 col-xs-12">
                 <div class="x_panel">
                     <div class="x_title">
-                        <h2>Train player models</h2>
+                        <h2>Predict player models</h2>
                         <div class="clearfix"></div>
                     </div>
                     <div class="x_content">
                         <br />
-                        <form id="train_form" class="form-horizontal form-label-left" data-parsley-validate="">
+                        <form id="predict_form" class="form-horizontal form-label-left" data-parsley-validate="">
                             <div class="form-group">
-                                <label for="train_select" class="control-label col-md-3 col-sm-3 col-xs-12">Train players</label>
+                                <label for="predict_select" class="control-label col-md-3 col-sm-3 col-xs-12">Predict players</label>
                                 <div class="col-md-6 col-sm-6 col-xs-12">
-                                    <div id="train-select" class="btn-group" data-toggle="buttons">
+                                    <div id="predict-select" class="btn-group" data-toggle="buttons">
                                         <label class="btn btn-default" data-toggle-class="btn-primary" data-toggle-passive-class="btn-default">
-                                            <input type="radio" name="train_select" value="all" checked /> All
+                                            <input type="radio" name="predict_select" value="all" checked /> All
                                         </label>
                                         <label class="btn btn-default" data-toggle-class="btn-primary" data-toggle-passive-class="btn-default">
-                                            <input type="radio" name="train_select" value="one" /> One
+                                            <input type="radio" name="predict_select" value="one" /> One
                                         </label>
                                     </div>
                                 </div>
@@ -133,9 +133,9 @@
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label for="select_train_frequency" class="control-label col-md-3 col-sm-3 col-xs-12">Train Frequency</label>
+                                <label for="select_predict_frequency" class="control-label col-md-3 col-sm-3 col-xs-12">Predict Frequency</label>
                                 <div class="col-md-9 col-sm-9 col-xs-12">
-                                    <select id="select_train_frequency" name="frequency" required="" placeholder="Specify training frequency..." data-parsley-validate-if-empty="true"/>
+                                    <select id="select_predict_frequency" name="frequency" required="" placeholder="Specify predict frequency..." data-parsley-validate-if-empty="true"/>
                                     </select>
                                 </div>
                             </div>
@@ -199,11 +199,11 @@ $( function() {
         dateRangeObj.prop('value', startDate + ' - ' + endDate);
         $('#daterange').data('daterangepicker').setOptions(dateRangeOptions , null);
     }
-    // Show/hide player_name selector based on train_select
+    // Show/hide player_name selector based on predict_select
     togglePlayerNameSelect();
-    $("input[name=train_select]").change(togglePlayerNameSelect);
+    $("input[name=predict_select]").change(togglePlayerNameSelect);
     function togglePlayerNameSelect() {
-        var selectedOption = $("input:radio[name=train_select]:checked").val()
+        var selectedOption = $("input:radio[name=predict_select]:checked").val()
         if (selectedOption == 'one') {
             $("#pname_form").show();
             //$("#daterange_form").show();
@@ -277,7 +277,7 @@ $( function() {
         {% endfor %}
         ],
     });
-    var $freq = $('#select_train_frequency').selectize({
+    var $freq = $('#select_predict_frequency').selectize({
         maxItems: 1,
         valueField: 'title',
         labelField: 'title',
@@ -296,7 +296,7 @@ $( function() {
 <!-- /code mirror for yaml input -->
 <script>
 $(document).ready(function() {
-    $("#train_form").on('submit', function(e){
+    $("#predict_form").on('submit', function(e){
         e.preventDefault();
         var form = $(this);
 
@@ -304,7 +304,7 @@ $(document).ready(function() {
 
         if (form.parsley().isValid()){
             //Retreive the data from the form:
-            var data = $('#train_form').serializeArray();
+            var data = $('#predict_form').serializeArray();
 
             //Add in additional data to the original form data:
             data.push({name:'player_id', value: $.globaldata.selectedPlayerId});
@@ -312,7 +312,7 @@ $(document).ready(function() {
             //Submit the form via Ajax POST request:
             $.ajax({
                 type: 'POST',
-                url:  "{{ url_for('.fit') }}",
+                url:  "{{ url_for('.predict_task') }}",
                 data:  data,
                 dataType: 'json'
             }).done(function(data) {

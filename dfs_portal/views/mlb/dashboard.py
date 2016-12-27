@@ -164,6 +164,18 @@ def train():
     freqs = [1,7,14,30,-1]
     return render_template('mlb_train.html', models=models, freqs=freqs)
 
+@mlb_dashboard.route('/predict')
+def predict():
+    models = Model.query\
+                    .with_entities(Model.nickname)\
+                    .all()
+    models = [ m[0] for m in models ]
+
+    # List of valid training frequencies
+    freqs = [1,7,14,30,-1]
+    return render_template('mlb_predict.html', models=models, freqs=freqs)
+
+
 @mlb_dashboard.route('/model')
 def model():
     return render_template('mlb_model.html',
@@ -253,6 +265,39 @@ def fit():
                 message = ''
             return hredirect(url_for('.train'), 'Error: {}'.format(message), typ='danger')
 
+@mlb_dashboard.route('/predict_task', methods=['POST'])
+def predict_task():
+    formData = request.form
+    if not formData:
+        return jsonify({'message': 'No input data provided',
+                        'data':formData }), 400
+
+    pu.db
+    #Clean up the formData.
+    newFormData = parse_player_formdata(formData)
+    # Schedule the tasks
+    if newFormData['train_select'] == 'all':
+        task = fit_all_task.delay(newFormData)
+        results = wait_for_task(task, WAIT_UP_TO, SLEEP_FOR)
+        failResults = filter(lambda t: t.status != cStatus.success, results)
+        if not failResults:
+            return hredirect(url_for('.train'), 'Training all players scheduled.', typ='info')
+        else:
+            return hredirect(url_for('.train'), 'Training all players failed.', typ='danger')
+    else:
+        task = fit_player_task.delay(newFormData)
+        result = wait_for_task(task, WAIT_UP_TO, SLEEP_FOR)
+        if result.status == cStatus.none:
+            return hredirect(url_for('.train'), 'Training player task scheduled', typ='info')
+        elif result.status == cStatus.success:
+            return hredirect(url_for('.train'), 'Training player task finished'.format(result.result.get('message')), typ='info')
+        else:
+            if result:
+                message = result.result.get('message')
+            else:
+                message = ''
+            return hredirect(url_for('.train'), 'Error: {}'.format(message), typ='danger')
+
 
 
 def get_player_career_start_end(playerTup):
@@ -282,7 +327,7 @@ def parse_player_formdata(formData):
             newFormData[key] = lst
         else:
             newFormData[key] = value
-    newFormData['train_frequency'] = int(newFormData['train_frequency'])
+    newFormData['frequency'] = int(newFormData['frequency'])
     newFormData = parse_date_range(newFormData)
 
     return newFormData

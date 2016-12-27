@@ -525,11 +525,12 @@ def fetch_and_add_stat_lines_to_db(self, startDate, endDate):
     assert startDate < endDate, 'start_date should be before end_date!'
     i = 0
     allErrors = []
+    allDates = list(filter(lambda date: date >= startDate.date() and date < endDate.date(), allDates))
     for date in allDates:
-        if date >= startDate.date() and date < endDate.date():
             i = i + 1
             #redis.incr(CURRENT_PROGRESS, amount=1)
-            self.update_state(state='PROGRESS', meta={'current': i, 'total': len(allDates), 'name': 'fetch_and_add_stat_lines_to_db'})
+            resObj = cResult(result=dict( message='', data=dict(name='fetch_and_add_stat_lines_to_db', current=i,total=len(allDates))), status=cStatus.fail)
+            self.update_state(state='PROGRESS', meta=resObj)
             statuses = fetch_all_game_data(date) >> add_data_to_db
             errorFound = False
 
@@ -546,7 +547,7 @@ def fetch_and_add_stat_lines_to_db(self, startDate, endDate):
                         allErrors.append((message,data))
 
             if errorFound:
-                return cResult(result=dict(message='Errors found when insert data in db.', data=allErrors), status=cStatus.fail)
+                return cResult(result=dict(message='Errors found when insert data in db.', data=allErrors,name='fetch_and_add_stat_lines_to_db'), status=cStatus.fail)
 
     return cResult(result=dict(message='Synced all data.', data=None), status=cStatus.success)
 # fetch_and_add_stat_lines_to_db(startDate, endDate)

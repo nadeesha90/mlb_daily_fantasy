@@ -59,9 +59,9 @@ def task_progress():
     tasksProgress = []
     for task in runningTasks:
         tasksProgress.append(dict(
-            name=task.result.result.get('name'),
-            current=task.result.result.get('data').get('current'),
-            total=task.result.result.get('data').get('total'),))
+            name=task.result.result['data']['name'],
+            current=task.result.result['data']['current'],
+            total=task.result.result['data']['total']))
 
 
     return jsonify(tasksProgress)
