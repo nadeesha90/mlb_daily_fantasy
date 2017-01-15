@@ -102,12 +102,12 @@ class ModelSchema(Schema):
 
     def dictify_hypers(self, obj):
         hypers_dict = htools.dictify(obj.hypers)
-        return hypers_dict 
+        return hypers_dict
     def dictify_data_cols(self, obj):
         data_cols_dict = htools.dictify(obj.data_cols)
-        return data_cols_dict 
-        
-        
+        return data_cols_dict
+
+
 
 class PlayerModelSchema(Schema):
     player = fields.Nested(PlayerSchema, required=True, only=['id'])
@@ -125,37 +125,6 @@ class PredSchema(Schema):
     #pred_col = fields.List(cls_or_instance=fields.Float)
     frequency = fields.Int(required=True)
     #pred_col = fields.List(cls_or_instance=fields.Float)
-
-
-
-
-
-
-
-
-
-
-#class FitSchema(Schema):
-#    model = fields.Nested('ModelSchema', required=True)
-#    model = fields.Nested('ModelSchema', required=True)
-#    player_id = fields.Int(required=True)
-#    player_type = fields.Str(required=True)
-
-#class PredictSchema(Schema):
-#    pred = fields.Nested('PredSchema', required=True)
-#    player_id = fields.Int(required=True)
-#    player_type = fields.Str(required=True)
-#    pred_start_date = fields.DateTime(required=True)
-#    pred_end_date = fields.DateTime(required=True)
-
-
-
-
-
-
-
-
-
 
 
 player_schema = PlayerSchema()
