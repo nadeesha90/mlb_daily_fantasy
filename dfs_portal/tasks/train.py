@@ -492,6 +492,11 @@ def predict_player_task(formData):
             #df = pd.read_sql(query.statement, query.session.bind)
             df = apply_transforms(df, d2nt(modelData))
             predScores = playerModel.predictorObj.predict(df, modelData['data_cols']['features'], modelData['data_cols']['target_col'])
+
+            # if we couldn't predict (not enough data? predict failed?), then move on
+            if predScores is None:
+                continue
+            
             yPred = pd.DataFrame({'date':gameDates[1:], 'pred':predScores})
             print(yPred)
             
@@ -503,18 +508,19 @@ def predict_player_task(formData):
                         .filter(Pred.player_model_id == playerModel.id)\
                         .one()
                 LOG.info('Appending to existing pred df.')
-                print(pred.pred_col)
                 sharedPred = pd.merge(pred.pred_col, yPred, how='outer', on='date')
                 sharedPred['pred'] = sharedPred.apply(lambda x: x.pred_y if not np.isnan(x.pred_y) else x.pred_x, axis=1)
                 sharedPred = sharedPred.drop(['pred_x', 'pred_y'], axis=1)
 
                 pred.pred_col = sharedPred
+                print (pred.pred_col)
                 db.session.commit()
                 # TODO: currently facing issues with prediction columns stored in the tables. 
 
 
 
             except NoResultFound:
+                LOG.info('Creating new pred df')
                 predData = {'player_model': {'id': playerModel.id},
                         'frequency': formData['frequency'],
                         'pred_col': yPred}

@@ -46,6 +46,8 @@ from dfs_portal.utils.htools import order_dict, timing, d2l
 #from dfs_portal.utils.custom_contracts import *
 from dfs_portal.core.transforms import df2xy
 
+from celery.contrib import rdb
+
 #disable all contracts
 disable_all()
 class LassoPredictor (Persistent):
@@ -57,8 +59,12 @@ class LassoPredictor (Persistent):
     @timing
     def fit (self, df, features, targetCol, validationSplit=0.2):
 
+        print ("Running fit function:")
         print (df)
         XTrain, yTrain = df2xy(df, features, targetCol)
+        if XTrain.shape[0] < 3:
+            print ("not enough data to form a model!")
+            return False
 
         success = True
         try:
@@ -72,7 +78,12 @@ class LassoPredictor (Persistent):
 
     def predict (self, df, features, targetCol):
         XPred,_ = df2xy(df, features, targetCol)
-        yPred = self.model.predict(XPred)
+        try:
+            yPred = self.model.predict(XPred)
+        except ValueError:
+            traceback.print_exc()
+            return None
+
         #df['pred' + targetCol] = yPred
         return yPred
 
