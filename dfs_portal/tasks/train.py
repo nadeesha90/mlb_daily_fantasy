@@ -52,7 +52,7 @@ from dfs_portal.models.redis import T_CREATE_MODEL, T_FIT_ALL, T_FIT_ID, T_PREDI
 from dfs_portal.config import HardCoded
 
 from dfs_portal.core import abstract_predictor as abs_p
-from dfs_portal.core.dbutils import get_player_career_start_end, retrain_start_end_cycles, query_player_stat_line, player_stat_line_query2df
+from dfs_portal.core.dbutils import get_player_career_start_end, retrain_start_end_cycles, query_player_stat_line, player_stat_line_query2df, repredict_start_end_cycles
 
 from dfs_portal.core import transforms
 
@@ -92,7 +92,6 @@ def create_model_task(formData):
         LOG.warning('{} lock currently active.'.format(T_CREATE_MODEL))
         return cResult(result=None, status=cStatus.locked)
 
-    # TODO: nickname should be its own separate field. 
     formData['nickname'] = formData['hypers']['nickname']
     formData['data_transforms'] = formData['hypers']['data_transforms']
 
@@ -181,10 +180,11 @@ def fit_player_task(formData):
         return cResult(result=dict(message='No model found with the given nickname.', data=None), status=cStatus.fail)
     modelData, errors = model_schema.dump(model)
     
-    # TODO: delete these once Hassan integrates front-end
-    if formData['train_frequency'] > 0:
+    # If frequency is given, then ignore given start and end dates and just follow through career.
+    # If frequency = -1, then use the given start and end dates.
+    if formData['frequency'] > 0:
         formData['start_date'], formData['end_date'] = get_player_career_start_end(player.player_type, player.id)
-        allEndDates = retrain_start_end_cycles(formData['start_date'], formData['end_date'], formData['train_frequency'])
+        allEndDates = retrain_start_end_cycles(formData['start_date'], formData['end_date'], formData['frequency'])
     else:
         allEndDates = [ formData['end_date'] ]
     
@@ -212,7 +212,6 @@ def fit_player_task(formData):
 
 
             if fitSuccess:
-                #rdb.set_trace()
                 playerModelData = {'player': {'id': player.id},
                         'model': {'id': model.id},
                         'start_date': formData['start_date'].strftime('%m/%d/%Y'),
@@ -232,8 +231,6 @@ def fit_player_task(formData):
         except MultipleResultsFound:
             return cResult(result=dict(message='Found duplicate Models in the database.', data=None), status=cStatus.fail)
 
-    #tas = predict_player_task.delay(formData)
-    #res = wait_for_task(tas, WAIT_UP_TO, SLEEP_FOR)
     return cResult(result='fitp', status=cStatus.success)
 
 
@@ -283,11 +280,7 @@ def predict_player_task(formData):
     if not have_lock:
         LOG.warning('{} lock currently active.'.format(lockName))
         return cResult(result=dict(message='Celery task is locked.', data=None), status=cStatus.locked)
-    
-    #formData, errors = pred_schema.load(formData)
-    #if errors:
-    #    return cResult(result=dict(message=errors, data=formData), status=cStatus.fail)
-    
+ 
     try:
         player = Player.query.get(formData['player_id'])
     except IntegrityError:
@@ -301,18 +294,30 @@ def predict_player_task(formData):
         return cResult(result=dict(message='No model found with the given nickname.', data=None), status=cStatus.fail)
     modelData, errors = model_schema.dump(model)
 
-    startDate, endDate = get_player_career_start_end(player.player_type, player.id)
-    allEndDates = retrain_start_end_cycles(startDate, endDate, formData['train_frequency'])
-    formData['start_date'] = startDate
+    # If frequency is given, then follow career path, build train and predict grids.
+    # If no frequency given, then build the largest model (career path) and use given predict grid.
+    formData['model_start_date'], formData['model_end_date'] = get_player_career_start_end(player.player_type, player.id)
+    if formData['frequency'] > 0:
+        allModelEndDates = retrain_start_end_cycles(formData['model_start_date'], formData['model_end_date'], formData['frequency'])
+        allPredictStartDates, allPredictEndDates = repredict_start_end_cycles(formData['model_start_date'], formData['model_end_date'], formData['frequency'])
+    else:
+        allModelEndDates = [ formData['model_end_date'] ]
+        allPredictStartDates = [ formData['start_date'] ]
+        allPredictEndDates = [ formData['end_date'] ]
+    formData['model_start_date'] = formData['model_start_date'].replace(hour=0, minute=0)
     
-    for date in allEndDates:
-        formData['end_date'] = date
+    nDates = len(allModelEndDates)
+    for i in range(nDates):
+        formData['model_end_date'] = allModelEndDates[i].replace(hour=0, minute=0)
+        formData['start_date'] = allPredictStartDates[i].replace(hour=0, minute=0)
+        formData['end_date'] = allPredictEndDates[i].replace(hour=23, minute=59)
+
         try:
             playerModel = PlayerModel.query \
                     .filter(PlayerModel.player_id == player.id)\
                     .filter(PlayerModel.model_id == model.id)\
-                    .filter(PlayerModel.start_date == formData['start_date'].replace(hour=0, minute=0))\
-                    .filter(PlayerModel.end_date == formData['end_date'].replace(hour=0, minute=0))\
+                    .filter(PlayerModel.start_date == formData['model_start_date'].replace(hour=0, minute=0))\
+                    .filter(PlayerModel.end_date == formData['model_end_date'].replace(hour=0, minute=0))\
                     .one()
             LOG.info('Using existing model.')
 
@@ -320,39 +325,43 @@ def predict_player_task(formData):
             query = query_player_stat_line((player.id, player.player_type, formData['start_date'], formData['end_date']))
             #rdb.set_trace()
             df = player_stat_line_query2df(query)
+            if len(df) == 0:
+                LOG.warning('This query has no data.')
+                continue
             gameDates = df.date
             #df = pd.read_sql(query.statement, query.session.bind)
             df = apply_transforms(df, d2nt(modelData))
             predScores = playerModel.predictorObj.predict(df, modelData['data_cols']['features'], modelData['data_cols']['target_col'])
             yPred = pd.DataFrame({'date':gameDates[1:], 'pred':predScores})
-            # TODO: the problem with yPred is that it should have the exact
-            # same datetime dates as as from the statline data. However, the 
-            # statline does not have the dates. Solution should be to use 
-            # pd.read_sql to get the dates in your dataframe as a column, then
-            # remove the dates for model fitting, or predicting, etc. and
-            # reattach afterwards.
-            
+            print(yPred)
             # first check if the pred row exists
             # then append to it if it exists, otherwise create a new one
             try:
+                #rdb.set_trace()
                 pred = Pred.query \
                         .filter(Pred.player_model_id == playerModel.id)\
                         .one()
                 LOG.info('Appending to existing pred df.')
-                pred.pred_col = pred.pred_col.append(yPred, ignore_index=True)
-                # TODO: add a date column to the prediction and sort the values by date
+                print(pred.pred_col)
+                sharedPred = pd.merge(pred.pred_col, yPred, how='outer', on='date')
+                sharedPred['pred'] = sharedPred.apply(lambda x: x.pred_y if not np.isnan(x.pred_y) else x.pred_x, axis=1)
+                sharedPred = sharedPred.drop(['pred_x', 'pred_y'], axis=1)
+
+                pred.pred_col = sharedPred
                 db.session.commit()
+                # TODO: currently facing issues with prediction columns stored in the tables. 
 
 
 
             except NoResultFound:
                 predData = {'player_model': {'id': playerModel.id},
-                        'frequency': formData['train_frequency'],
+                        'frequency': formData['frequency'],
                         'pred_col': yPred}
                 predData, errors = pred_schema.load(predData)
                 if errors:
                     return cResult(result=dict(message=errors, data=playerModelData), status=cStatus.fail)
                 predData['player_model'] = playerModel
+                predData['pred_col'] = yPred
                 pred = Pred(**predData)
                 db.session.add(pred)
                 db.session.commit()

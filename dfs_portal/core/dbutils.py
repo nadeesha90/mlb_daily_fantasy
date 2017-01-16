@@ -15,10 +15,6 @@ def reset_to_start_of_week(date):
     return beginning_of_week
 
 def retrain_start_end_cycles(careerStartDate, careerEndDate, period=7):
-    startDates = []
-    endDates = []
-    #careerStartDate = reset_to_start_of_week(careerStartDate)
-    #careerEndDate = reset_to_start_of_week(careerEndDate)
     number_of_periods = (careerEndDate.date() - careerStartDate.date()).days / period
     assert(number_of_periods == int(number_of_periods)), 'number_of_periods should be an integer!'
     number_of_periods = int(number_of_periods)
@@ -27,6 +23,17 @@ def retrain_start_end_cycles(careerStartDate, careerEndDate, period=7):
     # TODO: endDates cycle has bias, i.e., if start=sep1 2pm, end=sep22 9pm
     # then endDates = [ sep1 2pm, sep8 2pm, sep15 2pm sep22 9pm ]
     return endDates
+
+def repredict_start_end_cycles(careerStartDate, careerEndDate, period=7):
+    number_of_periods = (careerEndDate.date() - careerStartDate.date()).days / period
+    assert(number_of_periods == int(number_of_periods)), 'number_of_periods should be an integer!'
+    number_of_periods = int(number_of_periods)
+    startDates = [ careerStartDate + datetime.timedelta(period) * (i+1) for i in range(number_of_periods) ]
+    endDates = [ sd + datetime.timedelta(period-1) for sd in startDates ]
+    # TODO: be careful, we want cycles to have start of day and end of day for when we query game data.
+    return startDates, endDates
+
+
 
 def get_player_career_start_end(playerType, playerId):
     #playerType, playerId = playerTup
@@ -44,10 +51,9 @@ def get_player_career_start_end(playerType, playerId):
     endDate = query[-1].game.date
     startDate = reset_to_start_of_week(startDate)
     endDate = reset_to_start_of_week(endDate)
-    #startDate = startDate.replace(hour=0, minute=0)
-    #endDate = endDate.replace(hour=0, minute=0)
-    #startDateStr  = startDate.strftime('%d/%m/%Y')
-    #endDateStr  = endDate.strftime('%d/%m/%Y')
+    # TODO: pull the reset_to_start_of_week out of this function because function name is
+    # misleading. we want get_player_career_start_end, reset_to_start_of_week, and 
+    # get_player_career_start_end_gridded.
     return startDate, endDate
 
 
