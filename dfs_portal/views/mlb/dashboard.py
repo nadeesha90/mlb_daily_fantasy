@@ -18,7 +18,7 @@ from dfs_portal.models.redis import T_SYNC_PLAYERS
 from dfs_portal.tasks.mlbgame import fetch_and_add_stat_lines_to_db
 from dfs_portal.tasks.train import create_model_task, fit_player_task, fit_all_task, predict_player_task, predict_all_task
 from dfs_portal.utils.htools import lmap, hredirect
-from dfs_portal.utils.ctools import wait_for_task, cResult, cStatus
+from dfs_portal.utils.ctools import wait_for_task
 from dfs_portal.core.abstract_predictor import get_available_predictors
 from dfs_portal.core.transforms import get_available_transforms
 SLEEP_FOR = 0.1  # Seconds to wait in between checks.
@@ -221,14 +221,14 @@ def create_model():
     #Clean up the formData.
     newFormData = parse_model_formdata(formData)
     task = create_model_task.delay(newFormData)
-    result = wait_for_task(task, 0.5, SLEEP_FOR)
-    if result.status == cStatus.none:
+    result = wait_for_task(task, 'create_model_task', 0.5, SLEEP_FOR)
+    if result.status == 'none':
         return hredirect(url_for('.model'), 'Create model task scheduled', typ='info')
-    elif result.status == cStatus.success:
-        return hredirect(url_for('.model'), 'Create model task finished'.format(result.result.get('message')), typ='info')
+    elif result.status == 'success':
+        return hredirect(url_for('.model'), 'Create model task finished'.format(result.msg), typ='info')
     else:
         if result:
-            message = result.result.get('message')
+            message = result.msg
         else:
             message = ''
         return hredirect(url_for('.model'), 'Error: {}'.format(message), typ='danger')
@@ -245,22 +245,22 @@ def fit():
     # Schedule the tasks
     if newFormData['train_select'] == 'all':
         task = fit_all_task.delay(newFormData)
-        results = wait_for_task(task, WAIT_UP_TO, SLEEP_FOR)
-        failResults = filter(lambda t: t.status != cStatus.success, results)
+        results = wait_for_task(task, 'fit_all_task', WAIT_UP_TO, SLEEP_FOR)
+        failResults = filter(lambda t: t.status != 'success', results)
         if not failResults:
             return hredirect(url_for('.train'), 'Training all players scheduled.', typ='info')
         else:
             return hredirect(url_for('.train'), 'Training all players failed.', typ='danger')
     else:
         task = fit_player_task.delay(newFormData)
-        result = wait_for_task(task, WAIT_UP_TO, SLEEP_FOR)
-        if result.status == cStatus.none:
+        result = wait_for_task(task, 'fit_player_task', WAIT_UP_TO, SLEEP_FOR)
+        if result.status == 'none':
             return hredirect(url_for('.train'), 'Training player task scheduled', typ='info')
-        elif result.status == cStatus.success:
-            return hredirect(url_for('.train'), 'Training player task finished'.format(result.result.get('message')), typ='info')
+        elif result.status == 'success':
+            return hredirect(url_for('.train'), 'Training player task finished'.format(result.msg), typ='info')
         else:
             if result:
-                message = result.result.get('message')
+                message = result.msg
             else:
                 message = ''
             return hredirect(url_for('.train'), 'Error: {}'.format(message), typ='danger')
@@ -288,11 +288,11 @@ def predict_task():
         result = wait_for_task(task, WAIT_UP_TO, SLEEP_FOR)
         if result.status == cStatus.none:
             return hredirect(url_for('.train'), 'Training player task scheduled', typ='info')
-        elif result.status == cStatus.success:
-            return hredirect(url_for('.train'), 'Training player task finished'.format(result.result.get('message')), typ='info')
+        elif result.status == 'success':
+            return hredirect(url_for('.train'), 'Training player task finished'.format(result.msg), typ='info')
         else:
             if result:
-                message = result.result.get('message')
+                message = result.msg
             else:
                 message = ''
             return hredirect(url_for('.train'), 'Error: {}'.format(message), typ='danger')

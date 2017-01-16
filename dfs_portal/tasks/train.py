@@ -1,3 +1,5 @@
+import pudb
+import pickle
 import argparse
 import collections
 import os
@@ -5,9 +7,9 @@ import sys
 import re
 import namedtupled
 from copy import deepcopy
-from pprint import pprint as print
+from pprint import pprint
 from calendar import Calendar
-from datetime import datetime 
+from datetime import datetime
 #Pypi modules
 import yaml
 from bs4 import BeautifulSoup
@@ -26,15 +28,8 @@ from monad.types.maybe import Nothing, Just
 from monad.actions import tryout
 #from maybe import *
 
-from dfs_portal.utils.htools import hprogress, flatten, merge_fuzzy, cached_read_html_page, hjrequest, d2nt, isempty, dget, lmap, reset_to_start_of_week 
+from dfs_portal.utils.htools import hprogress, flatten, merge_fuzzy, cached_read_html_page, hjrequest, d2nt, isempty, dget, lmap, reset_to_start_of_week
 
-
-
-
-import pudb
-import pickle
-
-from distutils.version import LooseVersion
 from logging import getLogger
 from celery import group
 from celery.contrib import rdb
@@ -44,7 +39,8 @@ from flask.ext.celery import single_instance
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 
 from dfs_portal.extensions import celery, db, redis
-from dfs_portal.utils.ctools import wait_for_task, cResult, cStatus
+from dfs_portal.schema.core import celery_result_schema
+from dfs_portal.utils.ctools import wait_for_task
 from dfs_portal.models.mlb import PlayerModel, Model, Player, BatterStatLine, PitcherStatLine, Game, Pred
 from dfs_portal.schema.mlb import player_model_schema, model_schema, pred_schema
 from dfs_portal.models.redis import T_CREATE_MODEL, T_FIT_ALL, T_FIT_ID, T_PREDICT_ALL, T_PREDICT_ID
@@ -90,15 +86,35 @@ def create_model_task(formData):
     have_lock = lock.acquire(blocking=False)
     if not have_lock:
         LOG.warning('{} lock currently active.'.format(T_CREATE_MODEL))
-        return cResult(result=None, status=cStatus.locked)
 
+        resObj, err = celery_result_schema.load(
+                dict(name='create_model_task',
+                     data=None,
+                     status='locked',
+                     msg='',
+                     currentProgress=0,
+                     totalProgress=1,
+                )
+            )
+        return resObj
+
+    # TODO: nickname should be its own separate field.
     formData['nickname'] = formData['hypers']['nickname']
     formData['data_transforms'] = formData['hypers']['data_transforms']
 
     formData, errors = model_schema.load(formData)
     if errors:
-        return cResult(result=dict(message=errors, data=formData), status=cStatus.fail)
-    
+        resObj, err = celery_result_schema.load(
+                dict(name='create_model_task',
+                     data=formData,
+                     status='fail',
+                     msg=errors,
+                     currentProgress=0,
+                     totalProgress=1,
+                )
+            )
+        return resObj
+
     #modelData = formData.get('model')
     try:
         model = Model.query \
@@ -108,8 +124,17 @@ def create_model_task(formData):
                 .filter(Model.data_cols == formData['data_cols'])\
                 .one()
         LOG.info('A model with these features exists. Use nickname {}'.format(model.nickname))
-        return cResult(result=dict(message='Model exists. Check nickname.', data=model.nickname), status=cStatus.fail)
-    
+        resObj, err = celery_result_schema.load(
+                dict(name='create_model_task',
+                     data=model.nickname,
+                     status='fail',
+                     msg='Model already exists. Check nickname',
+                     currentProgress=0,
+                     totalProgress=1,
+                )
+            )
+        return resObj
+
     except NoResultFound:
         LOG.info('No model found, creating model.')
         formData.pop('hypers_dict')
@@ -117,12 +142,28 @@ def create_model_task(formData):
         model = Model(**formData)
         db.session.add(model)
         db.session.commit()
-        return cResult(result=dict(message='Created model.', data=None), status=cStatus.success)
+        resObj, err = celery_result_schema.load(
+                dict(name='create_model_task',
+                     data=None,
+                     status='success',
+                     msg='Create model',
+                     currentProgress=0,
+                     totalProgress=1,
+                )
+            )
+        return resObj
 
     except MultipleResultsFound:
-        return cResult(result=dict(message='Found duplicate Models in the database.', data=None), status=cStatus.fail)
-
-
+        resObj, err = celery_result_schema.load(
+                dict(name='create_model_task',
+                     data=None,
+                     status='fail',
+                     msg='Found duplicate Models in the database.',
+                     currentProgress=0,
+                     totalProgress=1,
+                )
+            )
+        return resObj
 
 @celery.task(bind=False, soft_time_limit=120 *60)
 #@single_instance
@@ -134,7 +175,16 @@ def fit_all_task(formData):
     have_lock = lock.acquire(blocking=False)
     if not have_lock:
         LOG.warning('{} lock currently active.'.format(T_FIT_ALL))
-        return cResult(result=None, status=cStatus.locked)
+        resObj, err = celery_result_schema.load(
+                dict(name='fit_all_task',
+                     data=None,
+                     status='locked',
+                     msg='',
+                     currentProgress=0,
+                     totalProgress=1,
+                )
+            )
+        return resObj
 
 
     allPlayers = Player.query\
@@ -165,19 +215,54 @@ def fit_player_task(formData):
     have_lock = lock.acquire(blocking=False)
     if not have_lock:
         LOG.warning('{} lock currently active.'.format(lockName))
-        return cResult(result=dict(message='Celery task is locked.', data=None), status=cStatus.locked)
-    
+        resObj, err = celery_result_schema.load(
+                dict(name='fit_player_task',
+                     data=None,
+                     status='locked',
+                     msg='',
+                     currentProgress=0,
+                     totalProgress=1,
+                )
+            )
+        return resObj
+
     try:
         player = Player.query.get(formData['player_id'])
     except IntegrityError:
-        return cResult(result=dict(message='Player could not be found.', data=None), status=cStatus.fail)
+        resObj, err = celery_result_schema.load(
+                dict(name='fit_player_task',
+                     data=None,
+                     status='fail',
+                     msg='Player could not be found',
+                     currentProgress=0,
+                     totalProgress=1,
+                )
+            )
+        return resObj
     if player is None:
-        return cResult(result=dict(message='No player found with given id', data=None), status=cStatus.fail)
-
+        resObj, err = celery_result_schema.load(
+                dict(name='fit_player_task',
+                     data=None,
+                     status='fail',
+                     msg='No player found with given id',
+                     currentProgress=0,
+                     totalProgress=1,
+                )
+            )
+        return resObj
     try:
         model = Model.query.filter(Model.nickname == formData['model_nickname']).one()
     except NoResultFound:
-        return cResult(result=dict(message='No model found with the given nickname.', data=None), status=cStatus.fail)
+        resObj, err = celery_result_schema.load(
+                dict(name='fit_player_task',
+                     data=None,
+                     status='fail',
+                     msg='No model found with the given nickname.',
+                     currentProgress=0,
+                     totalProgress=1,
+                )
+            )
+        return resObj
     modelData, errors = model_schema.dump(model)
     
     # If frequency is given, then ignore given start and end dates and just follow through career.
@@ -187,7 +272,7 @@ def fit_player_task(formData):
         allEndDates = retrain_start_end_cycles(formData['start_date'], formData['end_date'], formData['frequency'])
     else:
         allEndDates = [ formData['end_date'] ]
-    
+
     for date in allEndDates:
         formData['end_date'] = date
         try:
@@ -218,9 +303,18 @@ def fit_player_task(formData):
                         'end_date': formData['end_date'].strftime('%m/%d/%Y')}
                 playerModelData, errors = player_model_schema.load(playerModelData)
                 if errors:
-                    return cResult(result=dict(message=errors, data=playerModelData), status=cStatus.fail)
-                playerModelData['predictorObj'] = predictorObj 
-                playerModelData['model'] = model 
+                    resObj, err = celery_result_schema.load(
+                        dict(name='fit_player_task',
+                             data=playerModelData,
+                             status='fail',
+                             msg=errors,
+                             currentProgress=0,
+                             totalProgress=1,
+                        )
+                    )
+                    return resObj
+                playerModelData['predictorObj'] = predictorObj
+                playerModelData['model'] = model
                 playerModelData['player'] = player
                 playerModel = PlayerModel(**playerModelData)
                 db.session.add(playerModel)
@@ -229,11 +323,29 @@ def fit_player_task(formData):
 
 
         except MultipleResultsFound:
-            return cResult(result=dict(message='Found duplicate Models in the database.', data=None), status=cStatus.fail)
+            resObj, err = celery_result_schema.load(
+                        dict(name='fit_player_task',
+                             data=None,
+                             status='fail',
+                             msg='Found duplicate Models in the database.',
+                             currentProgress=0,
+                             totalProgress=1,
+                        )
+                    )
+            return resObj
 
-    return cResult(result='fitp', status=cStatus.success)
-
-
+    #tas = predict_player_task.delay(formData)
+    #res = wait_for_task(tas, WAIT_UP_TO, SLEEP_FOR)
+    resObj, err = celery_result_schema.load(
+                dict(name='fit_player_task',
+                     data=None,
+                     status='success',
+                     msg=None,
+                     currentProgress=1,
+                     totalProgress=1,
+                )
+            )
+    return resObj
 
 
 
@@ -253,7 +365,16 @@ def predict_all_task(formData):
     have_lock = lock.acquire(blocking=False)
     if not have_lock:
         LOG.warning('{} lock currently active.'.format(T_PREDICT_ALL))
-        return cResult(result=None, status=cStatus.locked)
+        resObj, err = celery_result_schema.load(
+                    dict(name='predict_all_task',
+                         data=None,
+                         status='locked',
+                         msg='',
+                         currentProgress=0,
+                         totalProgress=1,
+                    )
+                )
+        return resObj
 
 
     allPlayers = Player.query\
@@ -279,19 +400,58 @@ def predict_player_task(formData):
     have_lock = lock.acquire(blocking=False)
     if not have_lock:
         LOG.warning('{} lock currently active.'.format(lockName))
-        return cResult(result=dict(message='Celery task is locked.', data=None), status=cStatus.locked)
- 
+        resObj, err = celery_result_schema.load(
+                    dict(name='predict_player_task',
+                         data=None,
+                         status='locked',
+                         msg='',
+                         currentProgress=0,
+                         totalProgress=1,
+                    )
+                )
+        return resObj
+    #formData, errors = pred_schema.load(formData)
+    #if errors:
+    #    return cResult(result=dict(message=errors, data=formData), status=cStatus.fail)
+
     try:
         player = Player.query.get(formData['player_id'])
     except IntegrityError:
-        return cResult(result=dict(message='Player could not be found.', data=None), status=cStatus.fail)
+        resObj, err = celery_result_schema.load(
+                dict(name='predict_player_task',
+                     data=None,
+                     status='fail',
+                     msg='Player could not be found',
+                     currentProgress=0,
+                     totalProgress=1,
+                )
+            )
+        return resObj
     if player is None:
-        return cResult(result=dict(message='No player found with given id', data=None), status=cStatus.fail)
+        resObj, err = celery_result_schema.load(
+                dict(name='predict_player_task',
+                     data=None,
+                     status='fail',
+                     msg='No player found with given id',
+                     currentProgress=0,
+                     totalProgress=1,
+                )
+            )
+        return resObj
 
     try:
         model = Model.query.filter(Model.nickname == formData['model_nickname']).one()
     except NoResultFound:
-        return cResult(result=dict(message='No model found with the given nickname.', data=None), status=cStatus.fail)
+        resObj, err = celery_result_schema.load(
+                dict(name='predict_player_task',
+                     data=None,
+                     status='fail',
+                     msg='No model found with the given nickname.',
+                     currentProgress=0,
+                     totalProgress=1,
+                )
+            )
+        return resObj
     modelData, errors = model_schema.dump(model)
 
     # If frequency is given, then follow career path, build train and predict grids.
@@ -334,6 +494,7 @@ def predict_player_task(formData):
             predScores = playerModel.predictorObj.predict(df, modelData['data_cols']['features'], modelData['data_cols']['target_col'])
             yPred = pd.DataFrame({'date':gameDates[1:], 'pred':predScores})
             print(yPred)
+            
             # first check if the pred row exists
             # then append to it if it exists, otherwise create a new one
             try:
@@ -359,7 +520,16 @@ def predict_player_task(formData):
                         'pred_col': yPred}
                 predData, errors = pred_schema.load(predData)
                 if errors:
-                    return cResult(result=dict(message=errors, data=playerModelData), status=cStatus.fail)
+                    resObj, err = celery_result_schema.load(
+                        dict(name='predict_player_task',
+                             data=playerModelData,
+                             status='fail',
+                             msg=errors,
+                             currentProgress=0,
+                             totalProgress=1,
+                        )
+                    )
+                    return resObj
                 predData['player_model'] = playerModel
                 predData['pred_col'] = yPred
                 pred = Pred(**predData)
@@ -367,29 +537,49 @@ def predict_player_task(formData):
                 db.session.commit()
 
             except MultipleResultsFound:
-                return cResult(result=dict(message='Found duplicate Preds in the database.', data=None), status=cStatus.fail)
-
-
+                resObj, err = celery_result_schema.load(
+                        dict(name='predict_player_task',
+                             data=None,
+                             status='fail',
+                             msg='Found duplicate Preds in the database.',
+                             currentProgress=0,
+                             totalProgress=1,
+                        )
+                    )
+                return resObj
 
         except NoResultFound:
             LOG.warning('No model found.')
-            return cResult(result=dict(message='No Model found in database.', data=None), status=cStatus.fail)
-
+            resObj, err = celery_result_schema.load(
+                        dict(name='predict_player_task',
+                             data=None,
+                             status='fail',
+                             msg='No Model found in database.',
+                             currentProgress=0,
+                             totalProgress=1,
+                        )
+                    )
+            return resObj
         except MultipleResultsFound:
-            return cResult(result=dict(message='Found duplicate Models in the database.', data=None), status=cStatus.fail)
-
-    return cResult(result='predp', status=cStatus.success)
-
-    
-    #allForms = []
-    #for date in allEndDates:
-    #    tempDict = deepcopy(formData)
-    #    tempDict['start_date'] = startDate
-    #    tempDict['end_date'] = endDate
-    #    allForms.append(tempDict)
-    #predict_all_retrains = group(predict_player_start_end_task.s(form) for form in allForms)
-    #tasks = predict_all_retrains.apply_async()
-    #results = wait_for_task(tasks, WAIT_UP_TO, SLEEP_FOR)
-    #return results
+            resObj, err = celery_result_schema.load(
+                        dict(name='predict_player_task',
+                             data=None,
+                             status='fail',
+                             msg='Found duplicate Models in the database.',
+                             currentProgress=0,
+                             totalProgress=1,
+                        )
+                    )
+            return resObj
+    resObj, err = celery_result_schema.load(
+                dict(name='predict_player_task',
+                     data=None,
+                     status='success',
+                     msg=None,
+                     currentProgress=1,
+                     totalProgress=1,
+                )
+            )
+    return resObj
 
 

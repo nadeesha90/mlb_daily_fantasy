@@ -39,7 +39,10 @@ from dfs_portal.extensions import celery, db, redis
 from dfs_portal.models.mlb import *
 from dfs_portal.schema.mlb import *
 from dfs_portal.models.redis import T_SYNC_PLAYERS
-from dfs_portal.utils.ctools import wait_for_task, cResult, cStatus
+from dfs_portal.utils.ctools import wait_for_task
+from dfs_portal.models.core import CeleryResult
+from dfs_portal.schema.core import celery_result_schema
+
 
 from dfs_portal.config import HardCoded
 
@@ -523,13 +526,20 @@ def fetch_and_add_stat_lines_to_db(self, startDate, endDate):
                      list,
                      sorted)
     assert startDate < endDate, 'start_date should be before end_date!'
-    i = 0
     allErrors = []
     allDates = list(filter(lambda date: date >= startDate.date() and date < endDate.date(), allDates))
-    for date in allDates:
-            i = i + 1
+    for i, date in enumerate(allDates):
             #redis.incr(CURRENT_PROGRESS, amount=1)
-            resObj = cResult(result=dict( message='', data=dict(name='fetch_and_add_stat_lines_to_db', current=i,total=len(allDates))), status=cStatus.fail)
+            #resObj = celery_result_schema.load(result=dict( message='', data=dict(name='fetch_and_add_stat_lines_to_db', current=i,total=len(allDates))), status=cStatus.fail)
+            resObj, err = celery_result_schema.load(
+                dict(name='fetch_and_add_stat_lines_to_db',
+                     data=None,
+                     status='locked',
+                     msg='Data: {}'.format(date),
+                     currentProgress=i,
+                     totalProgress=len(allDates),
+                )
+            )
             self.update_state(state='PROGRESS', meta=resObj)
             statuses = fetch_all_game_data(date) >> add_data_to_db
             errorFound = False
@@ -547,8 +557,26 @@ def fetch_and_add_stat_lines_to_db(self, startDate, endDate):
                         allErrors.append((message,data))
 
             if errorFound:
-                return cResult(result=dict(message='Errors found when insert data in db.', data=allErrors,name='fetch_and_add_stat_lines_to_db'), status=cStatus.fail)
+                resObj, err = celery_result_schema.load(
+                    dict(name='fetch_and_add_stat_lines_to_db',
+                     data=allErrors,
+                     status='fail',
+                     msg='Errors found when insert data in db.',
+                     currentProgress=i,
+                     totalProgress=len(allDates),
+                    )
+                )
+                return resObj
 
-    return cResult(result=dict(message='Synced all data.', data=None), status=cStatus.success)
+    resObj, err = celery_result_schema.load(
+                dict(name='fetch_and_add_stat_lines_to_db',
+                     data=None,
+                     status='success',
+                     msg='Synced all data!',
+                     currentProgress=i,
+                     totalProgress=len(allDates),
+                )
+            )
+    return resObj
 # fetch_and_add_stat_lines_to_db(startDate, endDate)
 

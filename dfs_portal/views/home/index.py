@@ -7,6 +7,8 @@ from datatables import ColumnDT, DataTables
 from dfs_portal.blueprints import home_index
 from dfs_portal.tasks.test import long_task
 from dfs_portal.tasks.mlbgame import fetch_and_add_stat_lines_to_db
+from dfs_portal.schema.core import celery_result_schema
+from dfs_portal.models.core import CeleryResult
 
 
 from celery.backends.database.models import *
@@ -25,8 +27,8 @@ def parse_datatable():
     # defining columns
     def get_key(key, r):
         result = '-'
-        if r:
-            val = r.result.get(key)
+        if isinstance(r, CeleryResult):
+            val = getattr(r, key)
             if val:
                 result = val
         return result
@@ -35,7 +37,7 @@ def parse_datatable():
     columns.append(ColumnDT('result', filter=partial(get_key, 'name')))
     columns.append(ColumnDT('task_id'))
     columns.append(ColumnDT('status'))
-    columns.append(ColumnDT('result', filter=partial(get_key, 'data')))
+    columns.append(ColumnDT('result', filter=partial(get_key, 'msg')))
     #columns.append(ColumnDT(playerType+'_fd_fpts_avg', filter=lambda x: round(x, 1)))
     #columns.append(ColumnDT(statlineColumn+'.fd_fpts'))
     #columns.append(ColumnDT(statlineColumn+'.game.date', filter=dated))
@@ -59,11 +61,9 @@ def task_progress():
     tasksProgress = []
     for task in runningTasks:
         tasksProgress.append(dict(
-            name=task.result.result['data']['name'],
-            current=task.result.result['data']['current'],
-            total=task.result.result['data']['total']))
-
-
+            name=task.result.name,
+            current=task.result.currentProgress,
+            total=task.result.totalProgress))
     return jsonify(tasksProgress)
 
 
