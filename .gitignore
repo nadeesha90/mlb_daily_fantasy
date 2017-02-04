@@ -54,3 +54,5 @@ docs/_build/
 logdir/
 tests/
 
+#swapfile
+dfs_portal/models/.mlb.py.swo
