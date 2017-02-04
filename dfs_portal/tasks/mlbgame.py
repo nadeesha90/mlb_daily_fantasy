@@ -484,7 +484,9 @@ def fetch_all_game_data(date):
 
     def fetch_and_merge(statLineData):
         hteam = statLineData.get('hteam')
-        miscData = fetch_data_from_retro(date, hteam)
+        # TODO: Re-enable fetching data from retro when needed in the future.
+        #miscData = fetch_data_from_retro(date, hteam)
+        miscData = Nothing
         if miscData is Nothing:
             miscData = Just({})
 

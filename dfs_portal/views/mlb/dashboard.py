@@ -16,6 +16,8 @@ from dfs_portal.extensions import redis, db
 from dfs_portal.models.mlb import *
 from dfs_portal.models.redis import T_SYNC_PLAYERS
 from dfs_portal.tasks.mlbgame import fetch_and_add_stat_lines_to_db
+from dfs_portal.tasks.optimize import optimize_rosters_task
+from dfs_portal.tasks.train import create_model_task, fit_player_task, fit_all_task
 from dfs_portal.tasks.train import create_model_task, fit_player_task, fit_all_task, predict_player_task, predict_all_task
 from dfs_portal.utils.htools import lmap, hredirect
 from dfs_portal.utils.ctools import wait_for_task
@@ -182,6 +184,11 @@ def model():
             predictors = enumerate(get_available_predictors()),
             transforms = enumerate(get_available_transforms()))
 
+@mlb_dashboard.route('/optimize')
+def optimize():
+    return render_template('mlb_optimize.html')
+
+
 
 @mlb_dashboard.route('/player_names/')
 def player_names():
@@ -297,6 +304,29 @@ def predict_task():
                 message = ''
             return hredirect(url_for('.train'), 'Error: {}'.format(message), typ='danger')
 
+@mlb_dashboard.route('/optimize_task', methods=['POST'])
+def optimize_task():
+    formData = request.form
+    if not formData:
+        return jsonify({'message': 'No input data provided',
+                        'data':formData }), 400
+
+    #Clean up the formData.
+    newFormData = parse_optimize_formdata(formData)
+    # Schedule the tasks
+    task = optimize_rosters_task.delay(newFormData)
+    result = wait_for_task(task, 'optimize_rosters_task', WAIT_UP_TO, SLEEP_FOR)
+    if result.status == 'none':
+        return hredirect(url_for('.train'), 'Training player task scheduled', typ='info')
+    elif result.status == 'success':
+        return hredirect(url_for('.train'), 'Training player task finished'.format(result.msg), typ='info')
+    else:
+        if result:
+            message = result.msg
+        else:
+            message = ''
+        return hredirect(url_for('.train'), 'Error: {}'.format(message), typ='danger')
+
 
 
 def get_player_career_start_end(playerTup):
@@ -347,6 +377,21 @@ def parse_model_formdata(formData):
         'data_cols': parse_yaml(newFormData['data_cols']),
     }
     return modelData
+
+def parse_optimize_formdata(formData):
+    newFormData = {}
+    #Extract lists from formdata
+    for key, value in formData.items():
+        lst = formData.getlist(key)
+        # If its a list, add it as a list
+        if len(lst) >= 2:
+            newFormData[key] = lst
+        else:
+            newFormData[key] = value
+    newFormData = parse_date_range(newFormData)
+    newFormData['optimize_params'] = parse_yaml(newFormData['optimize_params']),
+    return newFormData
+
 
 def parse_yaml(yamlStr):
     parsedDict = toolz.pipe(yamlStr,

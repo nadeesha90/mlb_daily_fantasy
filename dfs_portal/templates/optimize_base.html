@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+{% block styles -%}
+    {{ super() }}
+    <style type="text/css">
+.selectize-control.select_player_name_form .selectize-dropdown > div {
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+        .selectize-control.select_player_name_form .selectize-dropdown .by {
+            font-size: 11px;
+            opacity: 0.8;
+        }
+        .selectize-control.select_player_name_form .selectize-dropdown .by::before {
+            content: 'by ';
+        }
+        .selectize-control.select_player_name_form .selectize-dropdown .name {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        .selectize-control.select_player_name_form .selectize-dropdown .title {
+            display: block;
+        }
+        .selectize-control.select_player_name_form .selectize-dropdown .description {
+            font-size: 12px;
+            display: block;
+            color: #a0a0a0;
+            white-space: nowrap;
+            width: 100%;
+            text-overflow: ellipsis;
+            overflow: hidden;
+        }
+        .selectize-control.select_player_name_form .selectize-dropdown .meta {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            font-size: 10px;
+        }
+        .selectize-control.select_player_name_form .selectize-dropdown .meta li {
+            margin: 0;
+            padding: 0;
+            display: inline;
+            margin-right: 10px;
+        }
+        .selectize-control.select_player_name_form .selectize-dropdown .meta li span {
+            font-weight: bold;
+        }
+        .selectize-control.select_player_name_form::before {
+            -moz-transition: opacity 0.2s;
+            -webkit-transition: opacity 0.2s;
+            transition: opacity 0.2s;
+            content: ' ';
+            z-index: 2;
+            position: absolute;
+            display: block;
+            top: 12px;
+            right: 34px;
+            width: 16px;
+            height: 16px;
+            background: url("/static/production/images/spinner.gif");
+            background-size: 16px 16px;
+            opacity: 0;
+        }
+        .selectize-control.select_player_name_form.loading::before {
+            opacity: 0.4;
+        }
+    </style>
+{% endblock styles -%}
+
+{% block content -%}
+    <!-- page content -->
+    <div class="right_col" role="main">
+        <div class="">
+            <div class="page-title">
+            </div>
+
+            <div class="clearfix"></div>
+            <div class="row">
+                <div class="col-md-12 col-sm-12 col-xs-12">
+                    <div class="x_panel">
+                        <div class="x_title">
+                            <h2>Optimize rosters</h2>
+                            <div class="clearfix"></div>
+                        </div>
+                        <div class="x_content">
+                            <br />
+                            <form id="optimize_form" class="form-horizontal form-label-left" data-parsley-validate="">
+                                <div class="form-group" id="daterange_form">
+                                    <label class="control-label col-md-3 col-sm-3 col-xs-12">Date range</label>
+                                    <div class="col-md-9 col-sm-9 col-xs-12">
+                                        <input type="text" style="width: 200px" name="daterange" id="daterange" class="form-control"/>
+                                    </div>
+                                </div>
+                                <div class="item form-group">
+                                    <label class="control-label col-md-3 col-sm-3 col-xs-12" for="textarea">Optimizer parameters</label>
+                                    <div class="col-md-6 col-sm-6 col-xs-12">
+                                        <textarea id="f_optimize_textarea" name="optimize_params" class="form-control col-md-7 col-xs-12"></textarea>
+                                    </div>
+                                </div>
+
+                                <div class="invalid-form-error-message"></div>
+                                <div class="ln_solid"></div>
+                                <div class="form-group">
+                                    <div class="col-md-9 col-sm-9 col-xs-12 col-md-offset-3">
+                                        <button type="submit" class="btn btn-success">Submit</button>
+                                    </div>
+                                </div>
+
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    {%- endblock content %}
+
+    {% block scripts -%}
+        {{ super() }}
+        <!-- jQuery ui autocomplete -->
+        <script src="/static/vendors/jquery-ui-1.12.1.custom/jquery-ui.js"></script>
+
+        <script src="/static/vendors/bootstrap-wysiwyg/js/bootstrap-wysiwyg.min.js"></script>
+        <script src="/static/vendors/jquery.hotkeys/jquery.hotkeys.js"></script>
+        <script src="/static/vendors/google-code-prettify/src/prettify.js"></script>
+        <!-- jQuery Tags Input -->
+        <script src="/static/vendors/jquery.tagsinput/src/jquery.tagsinput.js"></script>
+        <!-- Switchery -->
+        <script src="/static/vendors/switchery/dist/switchery.min.js"></script>
+        <!-- Select2 -->
+        <script src="/static/vendors/select2/dist/js/select2.full.min.js"></script>
+        <!-- Selectize -->
+        <script src="/static/vendors/selectize-dups/dist/js/standalone/selectize.js"></script>
+        <!-- CodeMirror -->
+        <script src="/static/vendors/codemirror/lib/codemirror.js"></script>
+        <script src="/static/vendors/codemirror/mode/yaml/yaml.js"></script>
+        <!-- parsley Js -->
+        <script src="/static/vendors/parsleyjs/dist/parsley.js"></script>
+        <!-- FastClick -->
+        <script src="/static/vendors/fastclick/lib/fastclick.js"></script>
+        <!-- NProgress -->
+        <script src="/static/vendors/nprogress/nprogress.js"></script>
+
+        <script>
+var optimizeTextArea = CodeMirror.fromTextArea(document.getElementById("f_optimize_textarea"), {
+    lineNumbers: true,
+    styleActiveLine: true,
+    matchBrackets: true,
+    theme: 'base16-light',
+});
+        </script>
+
+        <script>
+
+$( function() {
+    function setDateRange (dateRangeObj, startDate, endDate) {
+        var dateRangeOptions = {
+            startDate: startDate,
+            endDate: endDate,
+            format: 'DD/MM/YYYY',
+        }
+        dateRangeObj.prop('value', startDate + ' - ' + endDate);
+        $('#daterange').data('daterangepicker').setOptions(dateRangeOptions , null);
+    }
+    var dateRangeOptions = {
+        maxDate: null,
+        minDate: null,
+        startDate: '01/01/2011',
+        endDate: '01/01/2017',
+        format: 'DD/MM/YYYY',
+    }
+    var dateRangePicker = $('#daterange').daterangepicker(dateRangeOptions, function(start, end, label) {
+        console.log(start.toISOString(), end.toISOString(), label);
+    });
+
+
+});
+        </script>
+        <!-- /Selectize -->
+        <!-- /code mirror for yaml input -->
+        <script>
+$(document).ready(function() {
+    $("#optimize_form").on('submit', function(e){
+        e.preventDefault();
+        var form = $(this);
+
+        form.parsley().validate();
+
+        if (form.parsley().isValid()){
+            //Retreive the data from the form:
+            var data = $('#optimize_form').serializeArray();
+
+            //Submit the form via Ajax POST request:
+            $.ajax({
+                type: 'POST',
+                url:  "{{ url_for('.optimize_task') }}",
+                data:  data,
+                dataType: 'json'
+            }).done(function(data) {
+                hgrowl(data.message, data.type);
+            });
+        }
+    });
+});
+
+(function ($) {
+    $.fn.serializeAll = function () {
+        var data = $(this).serializeArray();
+
+        $(':disabled[name]', this).each(function () { 
+            data.push({ name: this.name, value: $(this).val() });
+        });
+
+        return data;
+    }
+})(jQuery);
+        </script>
+        {%- endblock scripts %}

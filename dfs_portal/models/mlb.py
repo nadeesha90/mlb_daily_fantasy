@@ -144,7 +144,7 @@ class Model(Base):
 class PlayerModel(Base):
     '''
     PlayerModel table that stores the concrete
-    sklearn predictor object, along with the information 
+    sklearn predictor object, along with the information
     about the unique player whose data the predictor was trained on.
     '''
     __tablename__ = 'playermodel'
@@ -154,15 +154,15 @@ class PlayerModel(Base):
     predictorObj = Column(PickleType)
     model_id = Column(Integer, ForeignKey('model.id'))
     model = relationship('Model', backref='playermodels')
-    
+
     start_date = Column(DateTime)
     end_date = Column(DateTime)
 
 
 class Pred(Base):
     '''
-    Pred table that stores a dataframe of predictions for a given 
-    player based on a specified model. 
+    Pred table that stores a dataframe of predictions for a given
+    player based on a specified model.
     '''
     __tablename__ = 'pred'
     id = Column(Integer, primary_key=True)
@@ -170,10 +170,21 @@ class Pred(Base):
     # model_id = Column(Integer, ForeignKey('model.id'))
     player_model_id = Column(Integer, ForeignKey('playermodel.id'))
     player_model = relationship('PlayerModel', backref='preds')
-    
+
     frequency = Column(Integer)
     #start_date = Column(DateTime)
     #end_date = Column(DateTime)
 
     pred_col = Column(PickleType)
     # hyper_id   = Column(Integer, ForeignKey('modelhyper.id'))
+
+class Roster(Base):
+    '''
+    Roster table which stores optimal rosters based calculated
+    based on date and other parameters.
+    '''
+    __tablename__ = 'roster'
+    id = Column(Integer, primary_key=True)
+    date = Column(DateTime)
+    #players = relationship("Player", backref="roster")
+    rank = Column(Integer)

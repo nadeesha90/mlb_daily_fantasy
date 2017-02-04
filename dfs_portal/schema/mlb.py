@@ -126,6 +126,12 @@ class PredSchema(Schema):
     frequency = fields.Int(required=True)
     #pred_col = fields.List(cls_or_instance=fields.Float)
 
+class RosterSchema(Schema):
+    date = fields.DateTime(required=True)
+    players = fields.Nested(PlayerSchema, many=True, only=['full_name'])
+
+class OptimizeTaskSchema(Schema):
+    date = fields.DateTime(required=True)
 
 player_schema = PlayerSchema()
 players_schema = PlayerSchema(many=True)
@@ -144,3 +150,6 @@ player_model_schema = PlayerModelSchema()
 #model_fitting_function_schema = FitSchema()
 #model_predict_function_schema = PredictSchema()
 pred_schema = PredSchema()
+roster_schema = RosterSchema()
+rosters_schema = RosterSchema(many=True)
+optimize_task_schema = OptimizeTaskSchema()
