@@ -14,9 +14,9 @@ Technologies used:
 # Setup
 0. Purchase Mac.
 
-1. Create a virtualenv.
+1. Create a virtualenv. Make sure your python3 is python3.6 (or latest version)
 
-	`$ virtualenv env`
+    `$ virtualenv --python=/usr/local/bin/python3 env`
 
 2. Activate virtualenv.
 
