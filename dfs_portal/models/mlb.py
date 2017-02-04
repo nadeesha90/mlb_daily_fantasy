@@ -45,8 +45,8 @@ class Player(Base):
 
 class TeamPlayer(Base):
     __tablename__ = 'team_player'
-    player_id = Column(Integer, ForeignKey('player.id'), primary_key=True)
-    team_id = Column(Integer, ForeignKey('team.id'), primary_key=True)
+    player_id = Column(Integer, ForeignKey('player.id'))
+    team_id = Column(Integer, ForeignKey('team.id'))
     team_join_date = Column(DateTime)
     # bidirectional attribute/collection of "team"/"team_players"
     team = relationship(Team, backref=backref("team_players", cascade="all, delete-orphan"))
