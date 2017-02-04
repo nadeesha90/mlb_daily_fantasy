@@ -284,7 +284,7 @@ def predict_task():
     # Schedule the tasks
     if newFormData['predict_select'] == 'all':
         task = predict_all_task.delay(newFormData)
-        results = wait_for_task(task, WAIT_UP_TO, SLEEP_FOR)
+        results = wait_for_task(task, 'predict_all_task', WAIT_UP_TO, SLEEP_FOR)
         failResults = filter(lambda t: t.status != cStatus.success, results)
         if not failResults:
             return hredirect(url_for('.train'), 'Training all players scheduled.', typ='info')
@@ -292,7 +292,7 @@ def predict_task():
             return hredirect(url_for('.train'), 'Training all players failed.', typ='danger')
     else:
         task = predict_player_task.delay(newFormData)
-        result = wait_for_task(task, WAIT_UP_TO, SLEEP_FOR)
+        result = wait_for_task(task, 'predict_all_task', WAIT_UP_TO, SLEEP_FOR)
         if result.status == cStatus.none:
             return hredirect(url_for('.train'), 'Training player task scheduled', typ='info')
         elif result.status == 'success':
