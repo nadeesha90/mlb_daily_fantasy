@@ -28,7 +28,7 @@ Technologies used:
 
 4. Fix DataTables module (TEMPORARY).
  
-    `$ cp -r pypi_modules/datatables env/lib/python3.5/site-packages`
+    `$ cp -r pypi_modules/datatables env/lib/python3.6/site-packages`
 
 5. Create database tables.
     `$ ./manage.py create_all`
@@ -72,10 +72,3 @@ This will launch a Flask server and access it from `http://localhost:5000`.
 Launch celery tasks in the background for mlbgame update, rotoguru, etc.
    
 `$ make celery`
-
-
-
-
-
-
-
