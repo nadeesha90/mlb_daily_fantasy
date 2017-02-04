@@ -11,3 +11,5 @@ features:
 	unknowns: ['avg', 'bb', 'twob', 'h', 'hbp', 'hr', 'r', 'rbi', 'sb', 'so', 'threeb', 'ab']
 	knowns: []
 target_col: fd_fpts
+
+Rafid
