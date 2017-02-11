@@ -1,0 +1,5 @@
+# Send basic command to optimize_task view.
+
+http --form POST http://localhost:5000/mlb/optimize_task \
+    daterange="01/01/2011 - 01/01/2017" \
+    optimize_params=""
