@@ -22,6 +22,7 @@ class HardCoded(object):
     _SQLALCHEMY_DATABASE_USERNAME = 'dfs_service'
 
     MLB_PlayerType = ('batter', 'pitcher')
+    MIN_NUMBER_OF_GAMEDAYS = 3 # This constant multiplies with train_frequency
 
     currentDir = os.path.dirname(os.path.realpath(__file__))
     baseBallRefSaveDir = os.path.join(currentDir, 'data', 'mlb', 'baseball_ref_htmls')

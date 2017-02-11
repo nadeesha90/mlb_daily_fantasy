@@ -293,7 +293,12 @@ def fit_player_task(formData):
             df = pd.read_sql(query.statement, query.session.bind)
 
             df = apply_transforms(df, d2nt(modelData))
+            if len(df) < formData['frequency'] * HardCoded.MIN_NUMBER_OF_GAMEDAYS:
+                LOG.debug('Not enough game data to bother with building a model.')
+                continue
+
             fitSuccess = predictorObj.fit(df, modelData['data_cols']['features'], modelData['data_cols']['target_col'], validationSplit=modelData['hypers']['validation_split'])
+
 
 
             if fitSuccess:
@@ -555,17 +560,20 @@ def predict_player_task(formData):
                 return resObj
 
         except NoResultFound:
-            LOG.warning('No model found.')
-            resObj, err = celery_result_schema.load(
-                        dict(name='predict_player_task',
-                             data=None,
-                             status='fail',
-                             msg='No Model found in database.',
-                             currentProgress=0,
-                             totalProgress=1,
-                        )
-                    )
-            return resObj
+            LOG.info('No model found for {}-{}.'\
+                    .format(formData['model_start_date'],
+                    formData['model_end_date']))
+            continue
+            #resObj, err = celery_result_schema.load(
+            #            dict(name='predict_player_task',
+            #                 data=None,
+            #                 status='fail',
+            #                 msg='No Model found in database.',
+            #                 currentProgress=0,
+            #                 totalProgress=1,
+            #            )
+            #        )
+            #return resObj
         except MultipleResultsFound:
             resObj, err = celery_result_schema.load(
                         dict(name='predict_player_task',
