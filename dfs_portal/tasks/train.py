@@ -503,7 +503,7 @@ def predict_player_task(formData):
                 continue
             
             yPred = pd.DataFrame({'date':gameDates[1:], 'pred':predScores})
-            print(yPred)
+            #print(yPred)
             
             # first check if the pred row exists
             # then append to it if it exists, otherwise create a new one
@@ -517,7 +517,7 @@ def predict_player_task(formData):
                 sharedPred['pred'] = sharedPred.apply(lambda x: x.pred_y if not np.isnan(x.pred_y) else x.pred_x, axis=1)
                 sharedPred = sharedPred.drop(['pred_x', 'pred_y'], axis=1)
 
-                pred.pred_col = sharedPred
+                pred.pred_col = sharedPred.reset_index(drop=True)
                 print (pred.pred_col)
                 db.session.commit()
                 # TODO: currently facing issues with prediction columns stored in the tables. 
@@ -542,7 +542,7 @@ def predict_player_task(formData):
                     )
                     return resObj
                 predData['player_model'] = playerModel
-                predData['pred_col'] = yPred
+                predData['pred_col'] = yPred.reset_index(drop=True)
                 pred = Pred(**predData)
                 db.session.add(pred)
                 db.session.commit()
@@ -585,6 +585,10 @@ def predict_player_task(formData):
                         )
                     )
             return resObj
+    score_task(formData)
+
+
+
     resObj, err = celery_result_schema.load(
                 dict(name='predict_player_task',
                      data=None,
@@ -595,5 +599,98 @@ def predict_player_task(formData):
                 )
             )
     return resObj
+
+
+
+
+
+def score_task(formData):
+    '''Generates Rsq scores fora given player and model.
+    '''
+
+    # need model nickname and player name as input.
+    # 
+    try:
+        player = Player.query.get(formData['player_id'])
+    except IntegrityError:
+        resObj, err = celery_result_schema.load(
+                dict(name='score_task',
+                     data=None,
+                     status='fail',
+                     msg='Player could not be found',
+                     currentProgress=0,
+                     totalProgress=1,
+                )
+            )
+        return resObj
+    if player is None:
+        resObj, err = celery_result_schema.load(
+                dict(name='score_task',
+                     data=None,
+                     status='fail',
+                     msg='No player found with given id',
+                     currentProgress=0,
+                     totalProgress=1,
+                )
+            )
+        return resObj
+
+    try:
+        model = Model.query.filter(Model.nickname == formData['model_nickname']).one()
+    except NoResultFound:
+        resObj, err = celery_result_schema.load(
+                dict(name='score_task',
+                     data=None,
+                     status='fail',
+                     msg='No model found with the given nickname.',
+                     currentProgress=0,
+                     totalProgress=1,
+                )
+            )
+        return resObj
+    modelData, errors = model_schema.dump(model)
+
+    try:
+        allPlayerModels = PlayerModel.query \
+                .filter(PlayerModel.player_id == player.id)\
+                .filter(PlayerModel.model_id == model.id)\
+                .all()
+        LOG.info("Using existing player models.")
+
+        predDf = pd.DataFrame({'date':[], 'pred':[]})
+        for playerModel in allPlayerModels:
+            # Not using try because predict task already validates
+            # to make sure only one preds.
+            pred = playerModel.preds[0]
+            sharedDf = pd.merge(predDf, pred.pred_col, how='outer', on='date')
+            sharedDf['pred'] = sharedDf.apply(lambda x: x.pred_y if not np.isnan(x.pred_y) else x.pred_x, axis=1)
+            sharedDf = sharedDf.drop(['pred_x', 'pred_y'], axis=1)
+            predDf = sharedDf.reset_index(drop=True)
+
+        
+        rdb.set_trace()
+        predStartDate = predDf.date.iloc[0].to_datetime()
+        predEndDate = predDf.date.iloc[-1].to_datetime()
+        query = query_player_stat_line((player.id, player.player_type, predStartDate, predEndDate))
+        realDf = player_stat_line_query2df(query)
+        realDf = realDf[['date', 'fd_fpts']]
+        predDf = pd.merge(realDf, predDf, how='outer', on='date')
+
+
+
+
+    except NoResultFound:
+        LOG.info("Model {} has not been trained for {}.".format(model.nickname, player.full_name))
+        resObj, err = celery_result_schema.load(
+                dict(name='score_task',
+                     data=None,
+                     status='fail',
+                     msg='No player models found.',
+                     currentProgress=0,
+                     totalProgress=1,
+                )
+            )
+        return resObj
+
 
 
