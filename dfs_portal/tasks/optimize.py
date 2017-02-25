@@ -43,7 +43,7 @@ from dfs_portal.schema.core import celery_result_schema
 from dfs_portal.utils.ctools import wait_for_task
 from dfs_portal.models.mlb import PlayerModel, Model, Player, BatterStatLine, PitcherStatLine, Game, Pred
 from dfs_portal.schema.mlb import optimize_task_schema
-from dfs_portal.models.redis import T_OPTIMIZE
+from dfs_portal.models.mredis import T_OPTIMIZE
 
 from dfs_portal.core import abstract_predictor as abs_p
 from dfs_portal.core.dbutils import get_player_career_start_end, retrain_start_end_cycles, query_player_stat_line, player_stat_line_query2df

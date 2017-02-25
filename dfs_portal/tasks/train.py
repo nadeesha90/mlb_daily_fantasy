@@ -43,7 +43,7 @@ from dfs_portal.schema.core import celery_result_schema
 from dfs_portal.utils.ctools import wait_for_task
 from dfs_portal.models.mlb import PlayerModel, Model, Player, BatterStatLine, PitcherStatLine, Game, Pred
 from dfs_portal.schema.mlb import player_model_schema, model_schema, pred_schema
-from dfs_portal.models.redis import T_CREATE_MODEL, T_FIT_ALL, T_FIT_ID, T_PREDICT_ALL, T_PREDICT_ID
+from dfs_portal.models.mredis import T_CREATE_MODEL, T_FIT_ALL, T_FIT_ID, T_PREDICT_ALL, T_PREDICT_ID
 
 from dfs_portal.config import HardCoded
 

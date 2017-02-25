@@ -38,7 +38,7 @@ from flask.ext.celery import single_instance
 from dfs_portal.extensions import celery, db, redis
 from dfs_portal.models.mlb import *
 from dfs_portal.schema.mlb import *
-from dfs_portal.models.redis import T_SYNC_PLAYERS
+from dfs_portal.models.mredis import T_SYNC_PLAYERS
 from dfs_portal.utils.ctools import wait_for_task
 from dfs_portal.models.core import CeleryResult
 from dfs_portal.schema.core import celery_result_schema
