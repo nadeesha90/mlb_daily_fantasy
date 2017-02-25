@@ -14,7 +14,7 @@ from dfs_portal.blueprints import mlb_dashboard
 from dfs_portal.core import flash
 from dfs_portal.extensions import redis, db
 from dfs_portal.models.mlb import *
-from dfs_portal.models.redis import T_SYNC_PLAYERS
+from dfs_portal.models.mredis import T_SYNC_PLAYERS
 from dfs_portal.tasks.mlbgame import fetch_and_add_stat_lines_to_db
 from dfs_portal.tasks.optimize import optimize_rosters_task
 from dfs_portal.tasks.train import create_model_task, fit_player_task, fit_all_task
