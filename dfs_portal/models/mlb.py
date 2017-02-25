@@ -7,8 +7,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
 
-from models.helpers import Base
-from config import HardCoded
+from dfs_portal.models.helpers import Base
+from dfs_portal.config import HardCoded
 
 
 class Team(Base):
