@@ -1,5 +1,3 @@
-Roster Generation for Daily Fantasy Sports: We developed a standalone application to generate optimal Rosters (fantasy team) for entry into daily fantasy tournaments. The objectives were to; generate teams of players that met the position constraints of the sport, were under the salary cap and would yield high fantasy points. The software infrastructure consisted of four parts; 1) Data-acquisition: crawling the web for updated vegas odds, MLB game statistics and fantasy salaries 2) Data-ingestion: storing the data found in 1) into an SQL database, 3) Training machine learning models to predict daily fantasy points per player and 4) Generating a set of optimal rosters based on predicted fantasy points per player. 
-
 Technologies used:
 
 * Flask for web-server.
@@ -12,6 +10,8 @@ Technologies used:
 ### General notes
 
 ## Introduction
+
+Roster Generation for Daily Fantasy Sports: We developed a standalone application to generate optimal Rosters (fantasy team) for entry into daily fantasy tournaments. The objectives were to; generate teams of players that met the position constraints of the sport, were under the salary cap and would yield high fantasy points. The software infrastructure consisted of four parts; 1) Data-acquisition: crawling the web for updated vegas odds, MLB game statistics and fantasy salaries 2) Data-ingestion: storing the data found in 1) into an SQL database, 3) Training machine learning models to predict daily fantasy points per player and 4) Generating a set of optimal rosters based on predicted fantasy points per player. 
 
 # Setup
 0. Purchase Mac.
